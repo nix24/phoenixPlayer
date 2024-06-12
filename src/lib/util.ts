@@ -1,3 +1,7 @@
+import { get } from "svelte/store";
+import { db } from "./db";
+import { musicStore } from "./store/MusicStore";
+
 export const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return "0 Bytes";
 
@@ -20,3 +24,23 @@ export const formatTime = (time: number) => {
     return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
+export const fetchSongById = async (id: string) => {
+    const song = await db.songs.get(id);
+    if (song) return song;
+    return null;
+};
+export const deleteSong = async (id: string) => {
+    const songIndex = get(musicStore).songs.findIndex(song => song.id === id);
+    if (songIndex !== -1) {
+        await db.songs.delete(id);
+        musicStore.update(store => ({
+            ...store,
+            songs: [...store.songs.slice(0, songIndex), ...store.songs.slice(songIndex + 1)],
+        }));
+    }
+};
+
+export const createBlobUrl = (audioData: ArrayBuffer) => {
+    //we convert the audio data to a blob url
+    return URL.createObjectURL(new Blob([audioData], { type: "audio/mpeg" }));
+};

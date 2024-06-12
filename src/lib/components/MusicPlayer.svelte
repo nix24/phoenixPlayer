@@ -1,7 +1,7 @@
 <script lang="ts">
     //music player component
     import { musicStore } from "$lib/store/MusicStore";
-    import { formatTime } from "$lib/util";
+    import { createBlobUrl } from "$lib/util";
     import { onDestroy } from "svelte";
     import * as Tone from "tone";
     import placeholder from "$lib/images/placeholder.png";
@@ -16,7 +16,9 @@
                 player.stop();
                 player.dispose();
             }
-            player = new Tone.Player(currentSong.audioUrl).toDestination();
+            player = new Tone.Player(
+                createBlobUrl(currentSong.audioUrl),
+            ).toDestination();
             player.sync().start();
         }
     });
@@ -62,7 +64,7 @@
             </div>
         </div>
         <audio
-            src={$musicStore.currentSong?.audioUrl}
+            src={createBlobUrl($musicStore.currentSong?.audioUrl)}
             controls
             class="w-full mt-4 rounded-lg"
         />

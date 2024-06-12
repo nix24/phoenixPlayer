@@ -9,15 +9,29 @@
     import SearchResults from "$lib/components/SearchResults.svelte";
     import SearchBar from "$lib/components/SearchBar.svelte";
     import { v4 as uuidv4 } from "uuid";
-    let files: FileList | null = null;
+    import { db } from "$lib/db";
+    import Icon from "@iconify/svelte";
+    let files = null as FileList | null;
     //dummy data using placeholder img from placeholder website
-    let metadata: Song[] = dummyDataArray;
+    let metadata: Song[] = [];
     let filterMetadata: Song[] = [];
     const dispatch = createEventDispatcher();
     let listShown = false;
     let selectedIndex = -1;
+    let songs: Song[] = [];
 
-    onMount(() => {
+    onMount(async () => {
+        songs = await db.songs.toArray();
+        musicStore.update((store) => {
+            if (store.songs.length === 0) {
+                return {
+                    songs: songs,
+                    currentSong: null,
+                    isPlaying: false,
+                };
+            }
+            return store;
+        });
         const handleClickOutside = (event: MouseEvent) => {
             // Check if the click is outside of the list
             if (event.target) {
@@ -44,14 +58,6 @@
         listShown = false;
     };
 
-    const handleKeyDown = (e: KeyboardEvent, index: number) => {
-        if (e.key === "Enter" || e.key === " ") {
-            handleSelect(index);
-        } else if (e.key === "Escape") {
-            listShown = false;
-        }
-    };
-
     //add the dummy data to the files
     files = {
         length: metadata.length,
@@ -60,21 +66,13 @@
 
     const handleDirectoryUpload = async (event: Event) => {
         const target = event.target as HTMLInputElement;
-        const filesArray = Array.from(target.files || []).filter(
-            (file) => file.type === "audio/mpeg",
-        );
-        files = {
-            length: filesArray.length,
-            item: (index: number) => {
-                return filesArray[index];
-            },
-        } as FileList;
-
-        //for each file, get the metadata and then add it to an array
-
-        metadata = (await Promise.all(
-            filesArray.map(async (file) => {
+        const filesArray = Array.from(target.files || [])
+            .filter((file) => file.type === "audio/mpeg")
+            .map(async (file) => {
                 const { common, format } = await mm.parseBlob(file);
+                //set the audio as an arraybuffer to store in the database
+                const buffer = await file.arrayBuffer();
+
                 return {
                     id: uuidv4(),
                     coverArt: common.picture?.[0]?.data?.toString("base64"),
@@ -85,11 +83,12 @@
                     track: common.track.no,
                     duration: format.duration,
                     size: file.size,
-                    audioUrl: URL.createObjectURL(file),
+                    audioUrl: buffer,
                 };
-            }),
-        )) as Song[];
-
+            });
+        metadata = await Promise.all(filesArray);
+        await db.songs.clear();
+        await db.songs.bulkPut(metadata);
         musicStore.set({
             songs: metadata,
             currentSong: null,
@@ -120,50 +119,30 @@
     };
 
     const handleSongSelected = (event: CustomEvent<Song>) => {
-        console.log("Song selected", event.detail);
         const selectedSong = event.detail;
-        musicStore.set({
-            songs: metadata,
-            currentSong: selectedSong,
-            isPlaying: true,
-        });
-        console.log("musicStore", musicStore);
-    };
+        selectedIndex = metadata.findIndex(
+            (song) => song.id === selectedSong.id,
+        );
 
-    export const fetchSongById = async (id: string) => {
-        const index = metadata.findIndex((song) => song.id === id);
-        if (index !== -1) {
-            return metadata[index];
-        }
-        return null;
+        dispatch("songSelected", selectedSong);
     };
-
-    onMount(() => {
-        //set store to the dummy data if the store is empty
-        musicStore.update((store) => {
-            if (store.songs.length === 0) {
-                return {
-                    songs: metadata,
-                    currentSong: null,
-                    isPlaying: false,
-                };
-            }
-            return store;
-        });
-    });
 </script>
 
 <main class="p-4">
-    <h1 class="text-2xl font-bold mb-4">Upload Directory</h1>
-    <input
-        type="file"
-        accept="audio/*"
-        webkitdirectory
-        mozdirectory
-        on:change={handleDirectoryUpload}
-        multiple
-        class="file-input file-input-bordered w-full max-w-xs"
-    />
+    <h1 class="text-2xl font-bold mb-4">Songs</h1>
+
+    <div class="relative inline-flex items-center">
+        <Icon icon="mdi:upload" class="text-2xl cursor-pointer" />
+        <input
+            type="file"
+            accept="audio/*"
+            webkitdirectory
+            mozdirectory
+            on:change={handleDirectoryUpload}
+            multiple
+            class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+        />
+    </div>
 
     <div class="relative m-4" role="region" aria-live="polite">
         <div class="max-w-xs mx-auto">
@@ -180,6 +159,8 @@
     <div class="divider" />
 
     {#if files}
-        <SongList {files} on:songSelected={handleSongSelected} />
+        <SongList {songs} {files} on:songSelected={handleSongSelected} />
+    {:else}
+        <p>no files. try uploading from a directory!</p>
     {/if}
 </main>

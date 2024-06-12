@@ -1,4 +1,4 @@
-<script lang="ts">
+<script script lang="ts">
     // /songs/[slug] page
     import MusicPlayer from "$lib/components/MusicPlayer.svelte";
     import { musicStore } from "$lib/store/MusicStore";
