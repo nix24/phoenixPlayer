@@ -66,29 +66,38 @@
 
     const handleDirectoryUpload = async (event: Event) => {
         const target = event.target as HTMLInputElement;
-        const filesArray = Array.from(target.files || [])
-            .filter((file) => file.type === "audio/mpeg")
-            .map(async (file) => {
+        const filesArray = Array.from(target.files || []).filter(
+            (file) => file.type === "audio/mpeg",
+        );
+
+        const metadataPromises = filesArray.map(async (file) => {
+            try {
                 const { common, format } = await mm.parseBlob(file);
-                //set the audio as an arraybuffer to store in the database
                 const buffer = await file.arrayBuffer();
 
                 return {
                     id: uuidv4(),
                     coverArt: common.picture?.[0]?.data?.toString("base64"),
-                    title: common.title,
-                    artist: common.artist,
-                    album: common.album,
-                    year: common.year,
-                    track: common.track.no,
-                    duration: format.duration,
-                    size: file.size,
+                    title: common.title || "",
+                    artist: common.artist || "",
+                    album: common.album || "",
+                    year: common.year || "",
+                    track: common.track?.no || "",
+                    duration: format.duration || 0,
+                    size: file.size || 0,
                     audioUrl: buffer,
                 };
-            });
-        metadata = await Promise.all(filesArray);
+            } catch (error) {
+                console.error(`Failed to parse file ${file.name}:`, error);
+                return null;
+            }
+        });
+
+        const metadata = (await Promise.all(metadataPromises)).filter(Boolean);
+
         await db.songs.clear();
         await db.songs.bulkPut(metadata);
+
         musicStore.set({
             songs: metadata,
             currentSong: null,

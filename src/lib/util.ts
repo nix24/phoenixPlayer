@@ -21,7 +21,9 @@ export const formatTime = (time: number) => {
         Math.floor((time % 3600) / 60),
         Math.floor(time % 60)
     ];
-    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return h === 0 ?
+        `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}` :
+        `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 export const fetchSongById = async (id: string) => {

@@ -52,7 +52,7 @@
                 {/if}
                 <a
                     href={`/songs/${song?.id}`}
-                    class="flex-grow text-base-content tooltip hover:text-primary transition"
+                    class="flex-grow text-base-content tooltip hover:text-accent transition"
                     data-tip={song?.title}
                 >
                     <h3 class="text-lg font-semibold">
@@ -65,27 +65,34 @@
                     </p>
                 </a>
                 <div
-                    class="flex relative items-center justify-between space-y-2 text-base-content text-sm"
+                    class="flex flex-col items-center space-y-2 text-base-content text-sm"
                 >
-                    <p class="">{formatTime(song?.duration)}</p>
-                    <button
-                        type="button"
-                        class="btn btn-xs btn-circle absolute left-6 bottom-6"
-                        on:click={() => {
-                            const modal = document.getElementById(
-                                `songInfo${index}`,
-                            );
-                            if (modal) modal.showModal();
-                        }}
-                    >
-                        <Icon class="text-2xl" icon="mdi:information-outline" />
-                    </button>
-                    <button
-                        class="btn btn-xs btn-error btn-circle"
-                        on:click={() => deleteSong(song.id)}
-                    >
-                        <Icon class="text-2xl" icon="mdi:delete-outline" />
-                    </button>
+                    <div class="flex space-x-2">
+                        <button
+                            type="button"
+                            class="btn btn-xs btn-circle"
+                            on:click={() => {
+                                const modal = document.getElementById(
+                                    `songInfo${index}`,
+                                );
+                                if (modal) modal.showModal();
+                            }}
+                        >
+                            <Icon
+                                class="text-2xl"
+                                icon="mdi:information-outline"
+                            />
+                        </button>
+                        <button
+                            class="btn btn-xs btn-error btn-circle"
+                            on:click={() => deleteSong(song.id)}
+                        >
+                            <Icon icon="streamline:delete-1-solid" />
+                        </button>
+                    </div>
+                    <p class="font-light opacity-75">
+                        {formatTime(song?.duration)}
+                    </p>
 
                     <dialog
                         id={`songInfo${index}`}
