@@ -1,8 +1,13 @@
 <script lang="ts">
+    import { fade } from "svelte/transition";
+    import { setupViewTransition } from "sveltekit-view-transition";
+
     let drawerOpen = false;
+
+    const { transition } = setupViewTransition();
 </script>
 
-<div class="sticky top-0 z-30">
+<div class="sticky top-0 z-50">
     <div class="drawer">
         <input
             id="my-drawer-3"
@@ -33,7 +38,9 @@
                         >
                     </label>
                 </div>
-                <a href="/" class="flex-1 px-2 mx-2">Phoenix Player</a>
+                <a href="/" data-sveltekit-preload-data class="flex-1 px-2 mx-2"
+                    >Phoenix Player</a
+                >
                 <div class="flex-none hidden lg:block">
                     <ul class="menu menu-horizontal">
                         <!-- Navbar menu content here -->
@@ -69,16 +76,43 @@
     </div>
 </div>
 <!-- Page content here -->
-<slot />
+<main
+    use:transition={{
+        name: "page",
+        classes: ({ navigation }) => {
+            if (navigation.to?.url.pathname.includes("/songs/")) {
+                return ["slide-up"];
+            } else if (navigation.from?.url.pathname.includes("/songs/")) {
+                return ["fade"];
+            }
+            return [];
+        },
+    }}
+>
+    <slot />
+</main>
 
 <style>
-    :global(::view-transition-old(header)),
-    :global(::view-transition-new(header)) {
-        /* fly transition */
-        --view-transition-name: fly;
-        --view-transition-old-translateX: 0;
-        --view-transition-new-translateX: 100%;
-        --view-transition-old-opacity: 1;
-        --view-transition-new-opacity: 0;
+    :global(.slide-up::view-transition-old(page)),
+    :global(.slide-up::view-transition-new(page)) {
+        animation: 500ms cubic-bezier(0.4, 0, 0.2, 1) both slide-up;
+    }
+
+    @keyframes slide-up {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slide-down {
+        from {
+            transform: translateY(-100%);
+        }
+        to {
+            transform: translateY(0);
+        }
     }
 </style>

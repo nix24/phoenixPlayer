@@ -7,24 +7,39 @@
     import { createEventDispatcher } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
 
-    export let files: FileList;
-    export const songs: Song[] = [];
+    export let songs: Song[];
+    $: {
+        console.log("songs recieved: ", songs);
+    }
     const dispatch = createEventDispatcher();
 
     const handleSongClick = (song: Song) => {
-        musicStore.set({
-            songs: $musicStore.songs,
+        musicStore.update((store) => ({
+            ...store,
             currentSong: song,
             isPlaying: true,
-        });
+        }));
         dispatch("songSelected", song);
+    };
+
+    const openModal = (index: number, event: Event) => {
+        event.stopPropagation();
+
+        const modal = document.getElementById(`songInfo${index}`);
+        if (modal instanceof HTMLDialogElement) modal.showModal();
+    };
+
+    const handleDeleteSong = async (id: string, event: Event) => {
+        event.stopPropagation();
+        await deleteSong(id);
+        songs = songs.filter((song) => song.id !== id);
     };
 </script>
 
 <ul
     class="text-center items-center justify-center space-y-4 p-4 max-w-xl mx-auto lg:mx-0"
 >
-    {#each $musicStore.songs as song, index (song.id)}
+    {#each songs as song, index (song.id)}
         <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
         <li
             class="grid border border-primary bg-opacity-20 backdrop-filter glass bg-primary backdrop-blur-lg rounded-md shadow-md p-4 hover:bg-opacity-30"
@@ -54,11 +69,12 @@
                     href={`/songs/${song?.id}`}
                     class="flex-grow text-base-content tooltip hover:text-accent transition"
                     data-tip={song?.title}
+                    data-sveltekit-preload-data
                 >
                     <h3 class="text-lg font-semibold">
                         {song?.title.length > 20
                             ? `${song?.title.slice(0, 20)}...`
-                            : song?.title || files.item(index)?.name}
+                            : song?.title || "No Title Provided"}
                     </h3>
                     <p class="text-sm opacity-75">
                         {song?.artist}
@@ -71,12 +87,7 @@
                         <button
                             type="button"
                             class="btn btn-xs btn-circle"
-                            on:click={() => {
-                                const modal = document.getElementById(
-                                    `songInfo${index}`,
-                                );
-                                if (modal) modal.showModal();
-                            }}
+                            on:click={(event) => openModal(index, event)}
                         >
                             <Icon
                                 class="text-2xl"
@@ -85,7 +96,8 @@
                         </button>
                         <button
                             class="btn btn-xs btn-error btn-circle"
-                            on:click={() => deleteSong(song.id)}
+                            on:click={(event) =>
+                                handleDeleteSong(song?.id, event)}
                         >
                             <Icon icon="streamline:delete-1-solid" />
                         </button>
@@ -104,39 +116,24 @@
                             </h3>
                             <hr class="divide-y-2 py-1" />
                             <div class="flex flex-col gap-2">
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">ID:</p>
-                                    <p>{song?.id}</p>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Artist:</p>
-                                    <p>{song?.artist}</p>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Album:</p>
-                                    <p>{song?.album}</p>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Year:</p>
-                                    <p>{song?.year}</p>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Track:</p>
-                                    <p>{song?.track}</p>
-                                </div>
+                                {#each ["id", "artist", "album", "year", "track"] as field}
+                                    <div
+                                        class="flex justify-between items-center"
+                                    >
+                                        <p class="font-semibold">
+                                            {field.charAt(0).toUpperCase() +
+                                                field.slice(1)}:
+                                        </p>
+                                        <p>{song[field]}</p>
+                                    </div>
+                                {/each}
                                 <div class="flex justify-between items-center">
                                     <p class="font-semibold">Duration:</p>
-                                    <p>
-                                        {formatTime(song?.duration)}
-                                    </p>
+                                    <p>{formatTime(song?.duration)}</p>
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <p class="font-semibold">Size:</p>
-                                    <p>
-                                        {formatBytes(
-                                            files.item(index)?.size || 0,
-                                        )}
-                                    </p>
+                                    <p>{formatBytes(song?.size)}</p>
                                 </div>
                             </div>
                             <div class="modal-action mt-4">

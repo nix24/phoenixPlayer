@@ -1,18 +1,14 @@
 <script lang="ts">
+    import { musicStore } from "$lib/store/MusicStore";
+    import { debounce } from "$lib/util";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
 
-    const dispatcher = createEventDispatcher();
-
     let searchQuery = "";
 
-    const handleSearch = () => {
-        dispatcher("search", searchQuery);
-    };
-
-    const handleInput = (e: Event) => {
-        searchQuery = (e.target as HTMLInputElement).value;
-    };
+    const handleSearch = debounce(() => {
+        musicStore.filterSongs(searchQuery);
+    }, 500);
 </script>
 
 <div class="form-control">
@@ -21,18 +17,8 @@
             type="text"
             placeholder="Search the library..."
             class="input input-bordered w-full"
-            on:input={handleInput}
-            on:keydown={(e) => {
-                if (e.key === "Enter") handleSearch();
-            }}
+            bind:value={searchQuery}
+            on:input={handleSearch}
         />
-
-        <button
-            type="button"
-            on:click={handleSearch}
-            class="absolute left-72 top-4"
-        >
-            <Icon icon="mdi:magnify" class="text-xl z-10" />
-        </button>
     </div>
 </div>

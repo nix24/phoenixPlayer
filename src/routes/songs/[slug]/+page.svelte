@@ -1,20 +1,51 @@
 <script script lang="ts">
     // /songs/[slug] page
-    import MusicPlayer from "$lib/components/MusicPlayer.svelte";
     import { musicStore } from "$lib/store/MusicStore";
     import type { Song } from "$lib/types.js";
+    import { onMount } from "svelte";
     import type { PageData } from "./$types";
+    import { db } from "$lib/db";
+    import { goto } from "$app/navigation";
+    import Icon from "@iconify/svelte";
+    import MusicPlayerWs from "$lib/components/MusicPlayerWS.svelte";
+    import { createBlobUrl } from "$lib/util";
+    import placeholder from "$lib/images/placeholder.png";
 
     export let data: PageData;
 
-    musicStore.set({
-        songs: $musicStore.songs,
-        currentSong: data.props?.song as Song,
-        isPlaying: true,
+    onMount(async () => {
+        if (!$musicStore.songs.length) {
+            //if empty, fetch from db
+            const dbSongs = await db.songs.toArray();
+            musicStore.update((store) => ({
+                ...store,
+                songs: dbSongs,
+            }));
+        }
+
+        if (data.props?.song) {
+            musicStore.update((store) => ({
+                ...store,
+                currentSong: data.props.song as Song,
+            }));
+        }
     });
+
+    $: audioSrc = $musicStore.currentSong?.audioUrl
+        ? createBlobUrl($musicStore.currentSong.audioUrl)
+        : "";
+
+    $: imageSrc = $musicStore.currentSong?.coverArt
+        ? `data:image/jpg;base64,${$musicStore.currentSong?.coverArt}`
+        : placeholder;
+
+    const goBack = () => goto("/");
 </script>
 
-<h1>Testing, this is a slug page for specific song</h1>
-<pre>{JSON.stringify(data, null, 2)}</pre>
+<!-- <pre>{JSON.stringify(data, null, 2)}</pre> -->
 
-<MusicPlayer />
+<div class="">
+    <div class="flex flex-col items-center w-full">
+        <MusicPlayerWs {audioSrc} {imageSrc} />
+    </div>
+</div>

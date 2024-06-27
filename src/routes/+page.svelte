@@ -11,58 +11,25 @@
     import { v4 as uuidv4 } from "uuid";
     import { db } from "$lib/db";
     import Icon from "@iconify/svelte";
-    let files = null as FileList | null;
     //dummy data using placeholder img from placeholder website
-    let metadata: Song[] = [];
-    let filterMetadata: Song[] = [];
-    const dispatch = createEventDispatcher();
-    let listShown = false;
-    let selectedIndex = -1;
+
     let songs: Song[] = [];
+    let filteredSongs: Song[] = [];
 
-    onMount(async () => {
-        songs = await db.songs.toArray();
-        musicStore.update((store) => {
-            if (store.songs.length === 0) {
-                return {
-                    songs: songs,
-                    currentSong: null,
-                    isPlaying: false,
-                };
-            }
-            return store;
-        });
-        const handleClickOutside = (event: MouseEvent) => {
-            // Check if the click is outside of the list
-            if (event.target) {
-                if (!(event.target as HTMLElement).closest(".absolute")) {
-                    listShown = false;
-                }
-            } else {
-                console.log("event.target is null");
-            }
-        };
-
-        // Listen for click events on the window
-        window.addEventListener("click", handleClickOutside);
-
-        // Cleanup the event listener when the component is unmounted
-        return () => {
-            window.removeEventListener("click", handleClickOutside);
-        };
+    musicStore.subscribe((store) => {
+        songs = store.songs;
+        filteredSongs = store.filteredSongs;
+        console.log("Updated Filtered songs: ", filteredSongs);
     });
 
-    const handleSelect = (index: number) => {
-        selectedIndex = index;
-        dispatch("songSelected", filterMetadata[index]);
-        listShown = false;
-    };
-
-    //add the dummy data to the files
-    files = {
-        length: metadata.length,
-        item: (index: number) => metadata[index],
-    } as unknown as FileList;
+    onMount(async () => {
+        const dbSongs = await db.songs.toArray();
+        musicStore.update((store) => ({
+            ...store,
+            songs: dbSongs,
+            filteredSongs: dbSongs,
+        }));
+    });
 
     const handleDirectoryUpload = async (event: Event) => {
         const target = event.target as HTMLInputElement;
@@ -100,40 +67,19 @@
 
         musicStore.set({
             songs: metadata,
+            filteredSongs: metadata,
             currentSong: null,
             isPlaying: false,
         });
     };
 
-    const handleSearch = (e: CustomEvent<string>) => {
-        const target = e.detail;
-        console.log(`You searched for ${target}`);
-        //filter the metadata array based on the search
-        //if search is empty, return the original array
-        listShown = target !== "";
-
-        filterMetadata = metadata.filter((song) => {
-            const titleMatch =
-                song.title?.toLowerCase().includes(target.toLowerCase()) ||
-                false;
-            const artistMatch =
-                song.artist?.toLowerCase().includes(target.toLowerCase()) ||
-                false;
-            const albumMatch =
-                song.album?.toLowerCase().includes(target.toLowerCase()) ||
-                false;
-
-            return titleMatch || artistMatch || albumMatch;
-        });
-    };
-
     const handleSongSelected = (event: CustomEvent<Song>) => {
         const selectedSong = event.detail;
-        selectedIndex = metadata.findIndex(
-            (song) => song.id === selectedSong.id,
-        );
-
-        dispatch("songSelected", selectedSong);
+        musicStore.update((store) => ({
+            ...store,
+            currentSong: selectedSong,
+            isPlaying: true,
+        }));
     };
 </script>
 
@@ -155,20 +101,14 @@
 
     <div class="relative m-4" role="region" aria-live="polite">
         <div class="max-w-xs mx-auto">
-            <SearchBar on:search={handleSearch} />
+            <SearchBar />
         </div>
-        <SearchResults
-            {listShown}
-            {filterMetadata}
-            {selectedIndex}
-            on:songSelected
-        />
     </div>
 
     <div class="divider" />
 
-    {#if files}
-        <SongList {songs} {files} on:songSelected={handleSongSelected} />
+    {#if filteredSongs.length > 0}
+        <SongList songs={filteredSongs} on:songSelected={handleSongSelected} />
     {:else}
         <p>no files. try uploading from a directory!</p>
     {/if}

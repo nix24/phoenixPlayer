@@ -12,6 +12,17 @@ export class MyDatabase extends Dexie {
             songs: 'id, title, artist, album, year, track, duration, size, audioUrl',
         });
     }
+
+    //adding method to filter songs by artist or title or album
+    async filterSongs(query: string): Promise<Song[]> {
+        const queryLowerCase = query.toLowerCase();
+
+        return this.songs.filter(song =>
+            song.title.toLowerCase().includes(queryLowerCase) ||
+            song.artist.toLowerCase().includes(queryLowerCase) ||
+            song.album.toLowerCase().includes(queryLowerCase)
+        ).toArray();
+    }
 }
 
 let dbInstance: MyDatabase | undefined;
