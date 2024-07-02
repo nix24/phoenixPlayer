@@ -1,29 +1,42 @@
 <script lang="ts">
     //song list component
     import type { Song } from "$lib/types";
-    import { formatBytes, formatTime } from "$lib/util";
+    import { deleteSong, formatBytes, formatTime } from "$lib/util";
     import placeholder from "$lib/images/placeholder.png";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
 
-    export let files: FileList;
+    export let songs: Song[];
     const dispatch = createEventDispatcher();
 
     const handleSongClick = (song: Song) => {
-        musicStore.set({
-            songs: $musicStore.songs,
+        musicStore.update((store) => ({
+            ...store,
             currentSong: song,
             isPlaying: true,
-        });
+        }));
         dispatch("songSelected", song);
+    };
+
+    const openModal = (index: number, event: Event) => {
+        event.stopPropagation();
+
+        const modal = document.getElementById(`songInfo${index}`);
+        if (modal instanceof HTMLDialogElement) modal.showModal();
+    };
+
+    const handleDeleteSong = async (id: string, event: Event) => {
+        event.stopPropagation();
+        await deleteSong(id);
+        songs = songs.filter((song) => song.id !== id);
     };
 </script>
 
 <ul
     class="text-center items-center justify-center space-y-4 p-4 max-w-xl mx-auto lg:mx-0"
 >
-    {#each $musicStore.songs as song, index (song.id)}
+    {#each songs as song, index (song.id)}
         <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
         <li
             class="grid border border-primary bg-opacity-20 backdrop-filter glass bg-primary backdrop-blur-lg rounded-md shadow-md p-4 hover:bg-opacity-30"
@@ -34,125 +47,108 @@
                 }
             }}
         >
-            <a href={`/songs/${song?.id}`}>
-                <div class="flex items-center space-x-4">
-                    {#if song?.coverArt}
-                        <img
-                            src={`data:image/jpg;base64,${song?.coverArt}`}
-                            alt="Cover Art"
-                            class="max-w-16 h-auto rounded-md"
-                            data-tip={song?.title}
-                        />
-                    {:else}
-                        <img
-                            src={placeholder}
-                            alt="Cover Art"
-                            class="max-w-16 h-auto rounded-md"
-                        />
-                    {/if}
-                    <div
-                        class="flex-grow text-base-content tooltip"
+            <div class="flex items-center space-x-4">
+                {#if song?.coverArt}
+                    <img
+                        src={`data:image/jpg;base64,${song?.coverArt}`}
+                        alt="Cover Art"
+                        class="max-w-16 h-auto rounded-md"
                         data-tip={song?.title}
-                    >
-                        <h3 class="text-lg font-semibold">
-                            {song?.title.length > 20
-                                ? `${song?.title.slice(0, 20)}...`
-                                : song?.title || files.item(index)?.name}
-                        </h3>
-                        <p class="text-sm opacity-75">
-                            {song?.artist}
-                        </p>
-                    </div>
-                    <div
-                        class="flex relative items-center justify-between space-y-2 text-base-content text-sm"
-                    >
-                        <p class="">{formatTime(song?.duration)}</p>
+                    />
+                {:else}
+                    <img
+                        src={placeholder}
+                        alt="Cover Art"
+                        class="max-w-16 h-auto rounded-md"
+                    />
+                {/if}
+                <a
+                    href={`/songs/${song?.id}`}
+                    class="flex-grow text-base-content tooltip hover:text-accent transition"
+                    data-tip={song?.title}
+                    data-sveltekit-preload-data
+                >
+                    <h3 class="text-lg font-semibold">
+                        {song?.title.length > 20
+                            ? `${song?.title.slice(0, 20)}...`
+                            : song?.title || "No Title Provided"}
+                    </h3>
+                    <p class="text-sm opacity-75">
+                        {song?.artist}
+                    </p>
+                </a>
+                <div
+                    class="flex flex-col items-center space-y-2 text-base-content text-sm"
+                >
+                    <div class="flex justify-center space-x-2">
                         <button
                             type="button"
-                            class="btn btn-xs btn-circle absolute left-6 bottom-6"
-                            on:click={() => {
-                                const modal = document.getElementById(
-                                    `songInfo${index}`,
-                                );
-                                if (modal) modal.showModal();
-                            }}
+                            class="btn btn-sm btn-circle"
+                            on:click={(event) => openModal(index, event)}
                         >
                             <Icon
-                                class="text-2xl"
+                                class="font-bold text-lg"
                                 icon="mdi:information-outline"
                             />
                         </button>
-                        <dialog
-                            id={`songInfo${index}`}
-                            class="modal bg-base-100 rounded-lg text-base-content"
+                        <button
+                            class="btn btn-sm btn-circle flex items-center justify-center"
+                            on:click={(event) =>
+                                handleDeleteSong(song?.id, event)}
                         >
-                            <div class="modal-box w-full max-w-xs">
-                                <h3 class="font-bold text-lg mb-4">
-                                    {song?.title}
-                                </h3>
-                                <hr class="divide-y-2 py-1" />
-                                <div class="flex flex-col gap-2">
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">ID:</p>
-                                        <p>{song?.id}</p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Artist:</p>
-                                        <p>{song?.artist}</p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Album:</p>
-                                        <p>{song?.album}</p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Year:</p>
-                                        <p>{song?.year}</p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Track:</p>
-                                        <p>{song?.track}</p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Duration:</p>
-                                        <p>
-                                            {formatTime(song?.duration)}
-                                        </p>
-                                    </div>
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">Size:</p>
-                                        <p>
-                                            {formatBytes(
-                                                files.item(index)?.size || 0,
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="modal-action mt-4">
-                                    <form method="dialog">
-                                        <button class="btn btn-primary"
-                                            >Close</button
+                            <Icon
+                                class="  font-extrabold"
+                                icon="streamline:delete-1-solid"
+                            />
+                        </button>
+                    </div>
+                    <p class="font-light opacity-75">
+                        {formatTime(song?.duration)}
+                    </p>
+
+                    <dialog
+                        id={`songInfo${index}`}
+                        class="modal bg-base-100 rounded-lg text-base-content"
+                    >
+                        <div class="modal-box w-full max-w-xs">
+                            <h3 class="font-bold text-lg mb-4">
+                                {song?.title}
+                            </h3>
+                            <hr class="divide-y-2 py-1" />
+                            <div class="flex flex-col gap-2">
+                                {#each Object.entries(song) as [key, value]}
+                                    {#if ["id", "artist", "album", "year", "track"].includes(key)}
+                                        <div
+                                            class="flex justify-between items-center"
                                         >
-                                    </form>
+                                            <p class="font-semibold">
+                                                {key.charAt(0).toUpperCase() +
+                                                    key.slice(1)}:
+                                            </p>
+                                            <p>{value}</p>
+                                        </div>
+                                    {/if}
+                                {/each}
+                                <div class="flex justify-between items-center">
+                                    <p class="font-semibold">Duration:</p>
+                                    <p>{formatTime(song?.duration)}</p>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <p class="font-semibold">Size:</p>
+                                    <p>{formatBytes(song?.size)}</p>
                                 </div>
                             </div>
-                        </dialog>
-                    </div>
+                            <div class="modal-action mt-4">
+                                <form method="dialog">
+                                    <button class="btn btn-primary"
+                                        >Close</button
+                                    >
+                                </form>
+                            </div>
+                        </div>
+                    </dialog>
                 </div>
-            </a>
+            </div>
         </li>
     {/each}
 </ul>

@@ -8,5 +8,5 @@ export interface Song {
     track: number;
     duration: number;
     size: number;
-    audioUrl: string;
+    audioUrl: ArrayBuffer;
 }

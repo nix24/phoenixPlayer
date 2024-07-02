@@ -1,16 +1,17 @@
-import { musicStore } from '$lib/store/MusicStore.js';
-import { get } from 'svelte/store';
+import { fetchSongById } from '$lib/util.js';
 
 export async function load({ params }) {
-    console.log("params", params);
-    console.log("start fetching");
-    const id = params.slug;
-    console.log("id", id);
-    const store = get(musicStore);
-    const song = store.songs.find((song) => song.id === id);
-    console.log("grabbed song:", song);
-    if (song) {
-        return { props: { song } };
+
+    try {
+        const id = params.slug;
+        const song = await fetchSongById(id);
+
+        if (song) return { props: { song } };
+
+        return { status: 404, error: new Error('Song not found') };
+    } catch (error) {
+        console.error("Error info: ", error);
+        return { status: 500, error: new Error('Failed to load song') };
     }
-    return { status: 404, error: new Error("Song not found") };
+
 }
