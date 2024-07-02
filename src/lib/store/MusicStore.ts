@@ -28,9 +28,7 @@ function createMusicStore() {
         set,
         update,
         filterSongs: (query: string) => update(store => {
-            console.log("Filtering with query: ", query);
             const filtered = filterSongs(store.songs, query);
-            console.log("Filtered songs: ", filtered);
             return { ...store, filteredSongs: filtered };
         })
     }

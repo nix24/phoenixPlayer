@@ -2,11 +2,9 @@
     //home page
     import type { Song } from "$lib/types";
     import * as mm from "music-metadata-browser";
-    import { dummyDataArray } from "$lib/dummydata";
-    import { createEventDispatcher, onMount } from "svelte";
+    import { onMount } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
     import SongList from "$lib/components/SongList.svelte";
-    import SearchResults from "$lib/components/SearchResults.svelte";
     import SearchBar from "$lib/components/SearchBar.svelte";
     import { v4 as uuidv4 } from "uuid";
     import { db } from "$lib/db";
@@ -19,15 +17,14 @@
     musicStore.subscribe((store) => {
         songs = store.songs;
         filteredSongs = store.filteredSongs;
-        console.log("Updated Filtered songs: ", filteredSongs);
     });
 
     onMount(async () => {
-        const dbSongs = await db.songs.toArray();
+        const dbSongs = await db?.songs.toArray();
         musicStore.update((store) => ({
             ...store,
-            songs: dbSongs,
-            filteredSongs: dbSongs,
+            songs: dbSongs as Song[],
+            filteredSongs: dbSongs as Song[],
         }));
     });
 
@@ -62,12 +59,12 @@
 
         const metadata = (await Promise.all(metadataPromises)).filter(Boolean);
 
-        await db.songs.clear();
-        await db.songs.bulkPut(metadata);
+        await db?.songs.clear();
+        await db?.songs.bulkPut(metadata as Song[]);
 
         musicStore.set({
-            songs: metadata,
-            filteredSongs: metadata,
+            songs: metadata as Song[],
+            filteredSongs: metadata as Song[],
             currentSong: null,
             isPlaying: false,
         });
@@ -91,8 +88,8 @@
         <input
             type="file"
             accept="audio/*"
-            webkitdirectory
-            mozdirectory
+            {...{ webkitdirectory: true }}
+            {...{ mozdirectory: true }}
             on:change={handleDirectoryUpload}
             multiple
             class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"

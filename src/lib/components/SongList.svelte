@@ -8,9 +8,6 @@
     import { musicStore } from "$lib/store/MusicStore";
 
     export let songs: Song[];
-    $: {
-        console.log("songs recieved: ", songs);
-    }
     const dispatch = createEventDispatcher();
 
     const handleSongClick = (song: Song) => {
@@ -83,23 +80,26 @@
                 <div
                     class="flex flex-col items-center space-y-2 text-base-content text-sm"
                 >
-                    <div class="flex space-x-2">
+                    <div class="flex justify-center space-x-2">
                         <button
                             type="button"
-                            class="btn btn-xs btn-circle"
+                            class="btn btn-sm btn-circle"
                             on:click={(event) => openModal(index, event)}
                         >
                             <Icon
-                                class="text-2xl"
+                                class="font-bold text-lg"
                                 icon="mdi:information-outline"
                             />
                         </button>
                         <button
-                            class="btn btn-xs btn-error btn-circle"
+                            class="btn btn-sm btn-circle flex items-center justify-center"
                             on:click={(event) =>
                                 handleDeleteSong(song?.id, event)}
                         >
-                            <Icon icon="streamline:delete-1-solid" />
+                            <Icon
+                                class="  font-extrabold"
+                                icon="streamline:delete-1-solid"
+                            />
                         </button>
                     </div>
                     <p class="font-light opacity-75">
@@ -116,16 +116,18 @@
                             </h3>
                             <hr class="divide-y-2 py-1" />
                             <div class="flex flex-col gap-2">
-                                {#each ["id", "artist", "album", "year", "track"] as field}
-                                    <div
-                                        class="flex justify-between items-center"
-                                    >
-                                        <p class="font-semibold">
-                                            {field.charAt(0).toUpperCase() +
-                                                field.slice(1)}:
-                                        </p>
-                                        <p>{song[field]}</p>
-                                    </div>
+                                {#each Object.entries(song) as [key, value]}
+                                    {#if ["id", "artist", "album", "year", "track"].includes(key)}
+                                        <div
+                                            class="flex justify-between items-center"
+                                        >
+                                            <p class="font-semibold">
+                                                {key.charAt(0).toUpperCase() +
+                                                    key.slice(1)}:
+                                            </p>
+                                            <p>{value}</p>
+                                        </div>
+                                    {/if}
                                 {/each}
                                 <div class="flex justify-between items-center">
                                     <p class="font-semibold">Duration:</p>

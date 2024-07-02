@@ -1,9 +1,8 @@
 <script lang="ts">
     import { musicStore } from "$lib/store/MusicStore";
     import { debounce } from "$lib/util";
-    import Icon from "@iconify/svelte";
-    import { createEventDispatcher } from "svelte";
 
+    // biome-ignore lint/style/useConst: <explanation>
     let searchQuery = "";
 
     const handleSearch = debounce(() => {

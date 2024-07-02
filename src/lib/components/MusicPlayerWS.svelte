@@ -4,35 +4,49 @@
     import { onMount, onDestroy } from "svelte";
     import WaveSurfer from "wavesurfer.js";
     import { musicStore } from "$lib/store/MusicStore";
+    import SlideText from "./SlideText.svelte";
     import placeholder from "$lib/images/placeholder.png";
-    import { goto } from "$app/navigation";
+    import AudioMotionAnalyzer from "audiomotion-analyzer";
 
     export let audioSrc: string;
     export let imageSrc: string;
 
     let wavesurfer: WaveSurfer;
+    let audioMotion: AudioMotionAnalyzer;
+    let audioCtx: AudioContext;
+    let audioElement: HTMLAudioElement;
+    let mediaElementSource: MediaElementAudioSourceNode | null = null;
+
     let isPlaying = false;
     let isLoaded = false;
+    $: titleContainerW = 0;
+
     let currentTime = 0;
     let duration = 0;
 
     let waveformContainer: HTMLDivElement;
+    let visualizerContainer: HTMLDivElement;
 
     onMount(async () => {
+        audioCtx = new window.AudioContext();
+        audioElement = new Audio(audioSrc);
+
         wavesurfer = WaveSurfer.create({
             container: waveformContainer,
             waveColor: "violet",
             progressColor: "purple",
-            barWidth: 2,
+            barWidth: 5,
             barRadius: 3,
-            height: 50,
-            url: audioSrc,
+            height: 40,
+            backend: "MediaElement",
+            media: audioElement,
         });
 
         wavesurfer.on("ready", () => {
             isLoaded = true;
             duration = wavesurfer.getDuration();
-            wavesurfer.setVolume(volume);
+            if (audioMotion) audioMotion.destroy();
+            setupAudioMotion();
         });
 
         wavesurfer.on("play", () => {
@@ -52,84 +66,60 @@
         }
     });
 
+    function setupAudioMotion() {
+        if (!mediaElementSource) {
+            mediaElementSource =
+                audioCtx.createMediaElementSource(audioElement);
+        }
+        const gainNode = audioCtx.createGain();
+
+        mediaElementSource.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        audioMotion = new AudioMotionAnalyzer(visualizerContainer, {
+            audioCtx: audioCtx,
+            source: gainNode,
+            height: 200,
+            width: 1000,
+            useCanvas: true,
+            mode: 2, // You can adjust this mode as needed
+            smoothing: 0.5,
+            gradient: "rainbow",
+            showBgColor: true,
+            showScaleX: false,
+            showScaleY: true,
+            showPeaks: true,
+            ledBars: true,
+            connectSpeakers: false,
+            maxFPS: 60,
+            overlay: true,
+            bgAlpha: 0,
+        });
+
+        wavesurfer.setVolume(0.5);
+    }
+
     function togglePlay() {
         if (!isLoaded) return;
-
         wavesurfer.playPause();
     }
 
-    function seek(event: MouseEvent) {
-        if (!isLoaded) return;
-
-        const rect = waveformContainer.getBoundingClientRect();
-        const seekPos = (event.clientX - rect.left) / rect.width;
-        wavesurfer.seekTo(seekPos);
-    }
-
     $: if (audioSrc && wavesurfer) {
+        // Reload the audio if the source changes
         isLoaded = false;
         wavesurfer.load(audioSrc);
     }
 
     onDestroy(() => {
-        if (wavesurfer) {
-            wavesurfer.destroy();
+        if (wavesurfer) wavesurfer.destroy();
+        if (audioMotion) audioMotion.destroy();
+        if (audioCtx) audioCtx.close();
+        if (mediaElementSource) {
+            mediaElementSource.disconnect();
+            mediaElementSource = null;
         }
     });
-
-    const goBack = () => goto("/");
 </script>
-
-<!-- 
-<div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-base-100 to-base-300 shadow-lg p-6 z-50">
-    <div class="max-w-screen-xl mx-auto">
-        <div
-            class="flex flex-col md:flex-row items-center justify-between gap-4"
-        >
-            Waveform and playback controls 
-            <div class="flex flex-col items-center w-full md:w-2/3">
-                 svelte-ignore a11y-click-events-have-key-events 
-                svelte-ignore a11y-no-static-element-interactions 
-                <div
-                    bind:this={waveformContainer}
-                    class="w-full h-16 cursor-pointer"
-                    on:click={seek}
-                ></div>
-                <div class="flex items-center gap-4 mt-2">
-                    <button
-                        class="text-4xl hover:text-primary transition-colors"
-                        on:click={togglePlay}
-                    >
-                        <Icon
-                            icon={isPlaying
-                                ? "mdi:pause-circle"
-                                : "mdi:play-circle"}
-                        />
-                    </button>
-                    <span class="text-xs"
-                        >{formatTime(currentTime)} / {formatTime(
-                            duration,
-                        )}</span
-                    >
-                </div>
-            </div>
-
-            Volume control -
-            <div class="flex items-center gap-2 w-full md:w-1/3 justify-end">
-                <Icon icon="mdi:volume-high" class="text-xl" />
-                <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    bind:value={volume}
-                    on:input={setVolume}
-                    class="range range-xs range-primary"
-                />
-            </div>
-        </div>
-    </div>
-</div> -->
 
 <div class="w-full sticky bottom-0 left-0 right-0 bg-base-300 p-6 z-30">
     <div class="max-w-screen-xl mx-auto text-base-content">
@@ -165,16 +155,30 @@
             </div>
 
             <!-- Song Info -->
-            <h3 class=" text-xl font-bold mb-1">
-                {$musicStore.currentSong?.title}
+            <h3
+                class="text-4xl font-bold mb-1 text-center overflow-hidden"
+                bind:clientWidth={titleContainerW}
+            >
+                {#if titleContainerW >= 85}
+                    <SlideText
+                        text={$musicStore.currentSong?.title || ""}
+                        containerWidth={titleContainerW}
+                    />
+                {:else}
+                    {$musicStore.currentSong?.title}
+                {/if}
             </h3>
-            <p class="mb-6">{$musicStore.currentSong?.artist}</p>
+            <p class="mb-6 text-lg font-semibold">
+                {$musicStore.currentSong?.artist}
+            </p>
+
+            <!-- AudioMotion Visualizer -->
+            <div bind:this={visualizerContainer} class="mb-4"></div>
 
             <!-- Waveform -->
             <div
                 bind:this={waveformContainer}
                 class="w-full h-12 mb-4 cursor-pointer"
-                on:click={seek}
             ></div>
 
             <!-- Time Display -->
@@ -189,7 +193,7 @@
                     <Icon icon="mdi:skip-previous" width="36" height="36" />
                 </button>
                 <button
-                    class=" bg-secondary rounded-full p-3"
+                    class="bg-secondary rounded-full p-3"
                     on:click={togglePlay}
                 >
                     <Icon
@@ -218,5 +222,3 @@
         </div>
     </div>
 </div>
-
-<!-- Volume Slider (positioned outside the main container for side placement) -->

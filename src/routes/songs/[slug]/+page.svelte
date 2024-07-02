@@ -16,10 +16,10 @@
     onMount(async () => {
         if (!$musicStore.songs.length) {
             //if empty, fetch from db
-            const dbSongs = await db.songs.toArray();
+            const dbSongs = await db?.songs.toArray();
             musicStore.update((store) => ({
                 ...store,
-                songs: dbSongs,
+                songs: dbSongs as Song[],
             }));
         }
 
@@ -38,8 +38,6 @@
     $: imageSrc = $musicStore.currentSong?.coverArt
         ? `data:image/jpg;base64,${$musicStore.currentSong?.coverArt}`
         : placeholder;
-
-    const goBack = () => goto("/");
 </script>
 
 <!-- <pre>{JSON.stringify(data, null, 2)}</pre> -->

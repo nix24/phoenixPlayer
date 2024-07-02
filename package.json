@@ -33,6 +33,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"audiomotion-analyzer": "^4.5.0",
 		"buffer": "^6.0.3",
 		"daisyui": "^4.12.2",
 		"dexie": "^4.0.7",
