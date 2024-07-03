@@ -1,37 +1,66 @@
-import { writable } from "svelte/store";
+import { derived, writable, type Readable } from "svelte/store";
 import type { Song } from "$lib/types";
+import { db } from "$lib/db";
 
 
 function createMusicStore() {
     const { subscribe, set, update } = writable<{
         songs: Song[];
-        filteredSongs: Song[];
         currentSong: Song | null;
         isPlaying: boolean;
+        searchQuery: string;
     }>({
         songs: [],
-        filteredSongs: [],
         currentSong: null,
-        isPlaying: false
+        isPlaying: false,
+        searchQuery: ""
     });
-    function filterSongs(songs: Song[], query: string) {
-        const normalizedQuery = query.toLowerCase().trim();
-        return songs.filter(song => {
-            const title = song.title.toLowerCase();
-            const artist = song.artist.toLowerCase();
 
-            return title.includes(normalizedQuery) || artist.includes(normalizedQuery);
-        });
-    }
+    const filteredSongs: Readable<Song[]> = derived({ subscribe },
+        ($store) => {
+            const query = $store.searchQuery.toLowerCase().trim();
+            return $store.songs.filter(song =>
+                song.title.toLowerCase().includes(query) ||
+                song.artist.toLowerCase().includes(query)
+            )
+        }
+    )
     return {
         subscribe,
         set,
         update,
-        filterSongs: (query: string) => update(store => {
-            const filtered = filterSongs(store.songs, query);
-            return { ...store, filteredSongs: filtered };
-        })
+        filteredSongs,
+        setSearchQuery: (query: string) => update(store => ({
+            ...store,
+            searchQuery: query
+        })),
+
+        addSongs: async (newSongs: Song[]) => {
+            await db?.songs.bulkAdd(newSongs);
+            update(store => ({
+                ...store,
+                songs: [...store.songs, ...newSongs],
+            }))
+        },
+        deleteSong: async (id: string) => {
+            await db?.songs.delete(id);
+            update(store => ({
+                ...store,
+                songs: store.songs.filter(song => song.id !== id),
+            }))
+        },
+        loadSongs: async () => {
+            const dbSongs = await db?.songs.toArray();
+            set({
+                songs: dbSongs || [],
+                currentSong: null,
+                isPlaying: false,
+                searchQuery: ""
+            })
+        }
     }
 }
 
-export const musicStore = createMusicStore();
+type MusicStore = ReturnType<typeof createMusicStore>;
+
+export const musicStore: MusicStore = createMusicStore();

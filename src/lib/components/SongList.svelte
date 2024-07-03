@@ -1,14 +1,21 @@
 <script lang="ts">
     //song list component
     import type { Song } from "$lib/types";
-    import { deleteSong, formatBytes, formatTime } from "$lib/util";
+    import { formatBytes, formatTime } from "$lib/util";
     import placeholder from "$lib/images/placeholder.png";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
 
     export let songs: Song[];
+
     const dispatch = createEventDispatcher();
+    //subscribing to filterdSongs
+    $: {
+        musicStore.filteredSongs.subscribe((value) => {
+            songs = value;
+        });
+    }
 
     const handleSongClick = (song: Song) => {
         musicStore.update((store) => ({
@@ -28,8 +35,7 @@
 
     const handleDeleteSong = async (id: string, event: Event) => {
         event.stopPropagation();
-        await deleteSong(id);
-        songs = songs.filter((song) => song.id !== id);
+        await musicStore.deleteSong(id);
     };
 </script>
 

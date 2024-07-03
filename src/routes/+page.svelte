@@ -11,33 +11,48 @@
     import Icon from "@iconify/svelte";
     //dummy data using placeholder img from placeholder website
 
-    let songs: Song[] = [];
     let filteredSongs: Song[] = [];
 
-    musicStore.subscribe((store) => {
-        songs = store.songs;
-        filteredSongs = store.filteredSongs;
+    musicStore.filteredSongs.subscribe((value) => {
+        filteredSongs = value;
     });
+    console.log("filteredSongs", filteredSongs);
 
     onMount(async () => {
-        const dbSongs = await db?.songs.toArray();
-        musicStore.update((store) => ({
-            ...store,
-            songs: dbSongs as Song[],
-            filteredSongs: dbSongs as Song[],
-        }));
+        await musicStore.loadSongs();
     });
 
-    const handleDirectoryUpload = async (event: Event) => {
+    async function handleFileUpload(event: Event) {
         const target = event.target as HTMLInputElement;
-        const filesArray = Array.from(target.files || []).filter(
-            (file) => file.type === "audio/mpeg",
-        );
+        const files = target.files;
+        if (files) {
+            const audioFiles = Array.from(files).filter(
+                (file) => file.type === "audio/mpeg",
+            );
+            processFiles(audioFiles);
+        }
+    }
 
-        const metadataPromises = filesArray.map(async (file) => {
+    async function processFiles(files: File[]) {
+        const newSongs = files.map(async (file) => {
             try {
                 const { common, format } = await mm.parseBlob(file);
                 const buffer = await file.arrayBuffer();
+
+                //check for exisitng files
+                console.log("common", common.title);
+                const exisitngFile = await db?.songs
+                    .where("title")
+                    .equals(String(common.title))
+                    .and((song) => song.artist === common.artist)
+                    .first();
+
+                if (exisitngFile) {
+                    console.log(
+                        `File ${file.name} already exists in the database`,
+                    );
+                    return null;
+                }
 
                 return {
                     id: uuidv4(),
@@ -57,45 +72,24 @@
             }
         });
 
-        const metadata = (await Promise.all(metadataPromises)).filter(Boolean);
-
-        await db?.songs.clear();
-        await db?.songs.bulkPut(metadata as Song[]);
-
-        musicStore.set({
-            songs: metadata as Song[],
-            filteredSongs: metadata as Song[],
-            currentSong: null,
-            isPlaying: false,
-        });
-    };
+        const validSongs = (await Promise.all(newSongs)).filter(
+            (song): song is Song => song !== null,
+        );
+        if (validSongs.length > 0) await musicStore.addSongs(validSongs);
+    }
 
     const handleSongSelected = (event: CustomEvent<Song>) => {
-        const selectedSong = event.detail;
         musicStore.update((store) => ({
             ...store,
-            currentSong: selectedSong,
+            currentSong: event.detail,
             isPlaying: true,
         }));
     };
 </script>
 
+<!-- <pre>{JSON.stringify(filteredSongs, null, 2)}</pre> -->
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Songs</h1>
-
-    <div class="relative inline-flex items-center">
-        <Icon icon="mdi:upload" class="text-2xl cursor-pointer" />
-        <input
-            type="file"
-            accept="audio/*"
-            {...{ webkitdirectory: true }}
-            {...{ mozdirectory: true }}
-            on:change={handleDirectoryUpload}
-            multiple
-            class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
-        />
-    </div>
-
     <div class="relative m-4" role="region" aria-live="polite">
         <div class="max-w-xs mx-auto">
             <SearchBar />
@@ -109,4 +103,34 @@
     {:else}
         <p>no files. try uploading from a directory!</p>
     {/if}
+
+    <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
+        <div
+            class="relative inline-flex items-center btn btn-primary tooltip tooltip-left"
+            data-tip="Upload from Directory"
+        >
+            <Icon icon="mdi:folder-upload" class="text-2xl cursor-pointer" />
+            <input
+                type="file"
+                accept="audio/*"
+                {...{ webkitdirectory: true }}
+                {...{ mozdirectory: true }}
+                on:change={handleFileUpload}
+                multiple
+                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+            />
+        </div>
+        <div
+            class="relative inline-flex items-center btn btn-secondary tooltip tooltip-left"
+            data-tip="Upload individual Files"
+        >
+            <Icon icon="mdi:file-upload" class="text-2xl cursor-pointer" />
+            <input
+                type="file"
+                accept="audio/*"
+                on:change={handleFileUpload}
+                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+            />
+        </div>
+    </div>
 </main>
