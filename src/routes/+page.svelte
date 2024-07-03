@@ -108,6 +108,12 @@
 
         <div class="divider" />
 
+        <div class="lg:w-1/3 mt-4 lg:mt-0">
+            <Playlist playlists={$playlistStore} />
+        </div>
+
+        <div class="divider" />
+
         {#if filteredSongs.length > 0}
             <SongList
                 songs={filteredSongs}
@@ -116,10 +122,6 @@
         {:else}
             <p>no files. try uploading from a directory!</p>
         {/if}
-
-        <div class="lg:w-1/3 mt-4 lg:mt-0">
-            <Playlist playlists={$playlistStore} />
-        </div>
     </div>
 
     <div class="fixed bottom-4 right-4 flex flex-col space-y-2">

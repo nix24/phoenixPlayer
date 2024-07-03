@@ -6,16 +6,18 @@
     import { createEventDispatcher } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
     import { playlistStore } from "$lib/store/PlaylistStore";
+    import { page } from "$app/stores";
 
     export let songs: Song[];
+    export let isPlaylistView = false;
 
     const dispatch = createEventDispatcher();
-
-    $: {
-        musicStore.filteredSongs.subscribe((value) => {
-            songs = value;
-        });
-    }
+    const playlistId = $page.params.slug;
+    // $: {
+    //     musicStore.filteredSongs.subscribe((value) => {
+    //         songs = value;
+    //     });
+    // }
 
     const handleSongClick = (song: Song) => {
         musicStore.update((store) => ({
@@ -32,6 +34,13 @@
 
     function addToPlaylist(playlistId: string, songId: string) {
         playlistStore.addSongToPlaylist(playlistId, songId);
+    }
+    function handleRemoveFromPlaylist(event: Event, songId: string) {
+        event.stopPropagation();
+        if (playlistId) {
+            playlistStore.removeSongFromPlaylist(playlistId, songId);
+            songs = songs.filter((song) => song.id !== songId);
+        }
     }
 
     function openModal(modalId: string) {
@@ -130,13 +139,25 @@
                     >
                         <Icon icon="mdi:information-outline" class="mr-2" /> Info
                     </button>
-                    <button
-                        class="btn btn-outline w-full"
-                        on:click={(event) =>
-                            handlePlaylistClick(event, song.id)}
-                    >
-                        <Icon icon="mdi:playlist-plus" class="mr-2" /> Add to Playlist
-                    </button>
+                    {#if !isPlaylistView}
+                        <button
+                            class="btn btn-outline w-full"
+                            on:click={(event) =>
+                                handlePlaylistClick(event, song.id)}
+                        >
+                            <Icon icon="mdi:playlist-plus" class="mr-2" /> Add to
+                            Playlist
+                        </button>
+                    {:else}
+                        <button
+                            class="btn btn-outline btn-error w-full"
+                            on:click={(event) =>
+                                handleRemoveFromPlaylist(event, song.id)}
+                        >
+                            <Icon icon="mdi:playlist-remove" class="mr-2" /> Remove
+                            from Playlist
+                        </button>
+                    {/if}
                     <button
                         class="btn btn-outline btn-error w-full"
                         on:click={(event) => handleDeleteClick(event, song.id)}
