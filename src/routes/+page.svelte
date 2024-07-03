@@ -9,104 +9,148 @@
     import { v4 as uuidv4 } from "uuid";
     import { db } from "$lib/db";
     import Icon from "@iconify/svelte";
+    import { playlistStore } from "$lib/store/PlaylistStore";
+    import Playlist from "$lib/components/Playlist.svelte";
     //dummy data using placeholder img from placeholder website
 
-    let songs: Song[] = [];
     let filteredSongs: Song[] = [];
 
-    musicStore.subscribe((store) => {
-        songs = store.songs;
-        filteredSongs = store.filteredSongs;
+    musicStore.filteredSongs.subscribe((value) => {
+        filteredSongs = value;
     });
+    console.log("filteredSongs", filteredSongs);
 
     onMount(async () => {
-        const dbSongs = await db?.songs.toArray();
-        musicStore.update((store) => ({
-            ...store,
-            songs: dbSongs as Song[],
-            filteredSongs: dbSongs as Song[],
-        }));
+        await musicStore.loadSongs();
+        await playlistStore.loadPlaylists();
     });
 
-    const handleDirectoryUpload = async (event: Event) => {
+    async function handleFileUpload(event: Event) {
         const target = event.target as HTMLInputElement;
-        const filesArray = Array.from(target.files || []).filter(
-            (file) => file.type === "audio/mpeg",
+        const files = target.files;
+        if (files) {
+            const audioFiles = Array.from(files).filter(
+                (file) => file.type === "audio/mpeg",
+            );
+            processFiles(audioFiles);
+        }
+    }
+
+    async function processFiles(files: File[]) {
+        const newSongs = await Promise.all(
+            files.map(async (file) => {
+                try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+
+                    const response = await fetch("/api/extractMeta", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Failed to extract metadata");
+                    }
+
+                    const metadata = await response.json();
+
+                    // Check for existing song
+                    const existingSong = await db?.songs
+                        .where("title")
+                        .equalsIgnoreCase(metadata.title)
+                        .and(
+                            (song) =>
+                                song.artist.toLowerCase() ===
+                                metadata.artist.toLowerCase(),
+                        )
+                        .first();
+
+                    if (existingSong) return null;
+
+                    return {
+                        id: uuidv4(),
+                        ...metadata,
+                        size: file.size,
+                        audioUrl: await file.arrayBuffer(),
+                    };
+                } catch (error) {
+                    console.error("Failed to process file", error);
+                    return null;
+                }
+            }),
         );
 
-        const metadataPromises = filesArray.map(async (file) => {
-            try {
-                const { common, format } = await mm.parseBlob(file);
-                const buffer = await file.arrayBuffer();
-
-                return {
-                    id: uuidv4(),
-                    coverArt: common.picture?.[0]?.data?.toString("base64"),
-                    title: common.title || "",
-                    artist: common.artist || "",
-                    album: common.album || "",
-                    year: common.year || "",
-                    track: common.track?.no || "",
-                    duration: format.duration || 0,
-                    size: file.size || 0,
-                    audioUrl: buffer,
-                };
-            } catch (error) {
-                console.error(`Failed to parse file ${file.name}:`, error);
-                return null;
-            }
-        });
-
-        const metadata = (await Promise.all(metadataPromises)).filter(Boolean);
-
-        await db?.songs.clear();
-        await db?.songs.bulkPut(metadata as Song[]);
-
-        musicStore.set({
-            songs: metadata as Song[],
-            filteredSongs: metadata as Song[],
-            currentSong: null,
-            isPlaying: false,
-        });
-    };
+        const validSongs = (await Promise.all(newSongs)).filter(
+            (song): song is Song => song !== null,
+        );
+        if (validSongs.length > 0) await musicStore.addSongs(validSongs);
+    }
 
     const handleSongSelected = (event: CustomEvent<Song>) => {
-        const selectedSong = event.detail;
         musicStore.update((store) => ({
             ...store,
-            currentSong: selectedSong,
+            currentSong: event.detail,
             isPlaying: true,
         }));
     };
 </script>
 
+<!-- <pre>{JSON.stringify(filteredSongs, null, 2)}</pre> -->
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Songs</h1>
 
-    <div class="relative inline-flex items-center">
-        <Icon icon="mdi:upload" class="text-2xl cursor-pointer" />
-        <input
-            type="file"
-            accept="audio/*"
-            {...{ webkitdirectory: true }}
-            {...{ mozdirectory: true }}
-            on:change={handleDirectoryUpload}
-            multiple
-            class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
-        />
+    <div class="lg:flex lg:space-x-4">
+        <div class="relative m-4" role="region" aria-live="polite">
+            <div class="max-w-xs mx-auto">
+                <SearchBar />
+            </div>
+        </div>
+
+        <div class="divider" />
+
+        <div class="lg:w-1/3 mt-4 lg:mt-0">
+            <Playlist playlists={$playlistStore} />
+        </div>
+
+        <div class="divider" />
+
+        {#if filteredSongs.length > 0}
+            <SongList
+                songs={filteredSongs}
+                on:songSelected={handleSongSelected}
+            />
+        {:else}
+            <p>no files. try uploading from a directory!</p>
+        {/if}
     </div>
 
-    <div class="relative m-4" role="region" aria-live="polite">
-        <div class="max-w-xs mx-auto">
-            <SearchBar />
+    <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
+        <div
+            class="relative inline-flex items-center btn btn-primary tooltip tooltip-left"
+            data-tip="Upload from Directory"
+        >
+            <Icon icon="mdi:folder-upload" class="text-2xl cursor-pointer" />
+            <input
+                type="file"
+                accept="audio/*"
+                {...{ webkitdirectory: true }}
+                {...{ mozdirectory: true }}
+                on:change={handleFileUpload}
+                multiple
+                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+            />
+        </div>
+        <div
+            class="relative inline-flex items-center btn btn-secondary tooltip tooltip-left"
+            data-tip="Upload individual Files"
+        >
+            <Icon icon="mdi:file-upload" class="text-2xl cursor-pointer" />
+            <input
+                type="file"
+                accept="audio/*"
+                on:change={handleFileUpload}
+                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+            />
         </div>
     </div>
-
-    <div class="divider" />
-
-    {#if filteredSongs.length > 0}
-        <SongList songs={filteredSongs} on:songSelected={handleSongSelected} />
-    {:else}
-        <p>no files. try uploading from a directory!</p>
-    {/if}
 </main>

@@ -25,16 +25,6 @@ export async function fetchSongById(id: string) {
     if (song) return song;
     return null;
 }
-export async function deleteSong(id: string) {
-    const songIndex = get(musicStore).songs.findIndex(song => song.id === id);
-    if (songIndex !== -1) {
-        await db.songs.delete(id);
-        musicStore.update(store => ({
-            ...store,
-            songs: [...store.songs.slice(0, songIndex), ...store.songs.slice(songIndex + 1)],
-        }));
-    }
-}
 
 export function createBlobUrl(audioData: ArrayBuffer) {
     //we convert the audio data to a blob url

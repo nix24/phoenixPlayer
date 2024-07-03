@@ -1,14 +1,23 @@
 <script lang="ts">
-    //song list component
     import type { Song } from "$lib/types";
-    import { deleteSong, formatBytes, formatTime } from "$lib/util";
+    import { formatBytes, formatTime } from "$lib/util";
     import placeholder from "$lib/images/placeholder.png";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
+    import { playlistStore } from "$lib/store/PlaylistStore";
+    import { page } from "$app/stores";
 
     export let songs: Song[];
+    export let isPlaylistView = false;
+
     const dispatch = createEventDispatcher();
+    const playlistId = $page.params.slug;
+    // $: {
+    //     musicStore.filteredSongs.subscribe((value) => {
+    //         songs = value;
+    //     });
+    // }
 
     const handleSongClick = (song: Song) => {
         musicStore.update((store) => ({
@@ -19,27 +28,50 @@
         dispatch("songSelected", song);
     };
 
-    const openModal = (index: number, event: Event) => {
-        event.stopPropagation();
+    const handleDeleteSong = async (id: string) => {
+        await musicStore.deleteSong(id);
+    };
 
-        const modal = document.getElementById(`songInfo${index}`);
+    function addToPlaylist(playlistId: string, songId: string) {
+        playlistStore.addSongToPlaylist(playlistId, songId);
+    }
+    function handleRemoveFromPlaylist(event: Event, songId: string) {
+        event.stopPropagation();
+        if (playlistId) {
+            playlistStore.removeSongFromPlaylist(playlistId, songId);
+            songs = songs.filter((song) => song.id !== songId);
+        }
+    }
+
+    function openModal(modalId: string) {
+        const modal = document.getElementById(modalId);
         if (modal instanceof HTMLDialogElement) modal.showModal();
-    };
+    }
 
-    const handleDeleteSong = async (id: string, event: Event) => {
+    function handleInfoClick(event: Event, songId: string) {
         event.stopPropagation();
-        await deleteSong(id);
-        songs = songs.filter((song) => song.id !== id);
-    };
+        openModal(`info-${songId}`);
+    }
+
+    function handlePlaylistClick(event: Event, songId: string) {
+        event.stopPropagation();
+        openModal(`playlist-${songId}`);
+    }
+
+    function handleDeleteClick(event: Event, songId: string) {
+        event.stopPropagation();
+        if (confirm("Are you sure you want to delete this song?")) {
+            handleDeleteSong(songId);
+        }
+    }
 </script>
 
 <ul
-    class="text-center items-center justify-center space-y-4 p-4 max-w-xl mx-auto lg:mx-0"
+    class="flex flex-col items-center justify-center space-y-4 p-4 max-w-xl mx-auto lg:mx-0"
 >
-    {#each songs as song, index (song.id)}
-        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-        <li
-            class="grid border border-primary bg-opacity-20 backdrop-filter glass bg-primary backdrop-blur-lg rounded-md shadow-md p-4 hover:bg-opacity-30"
+    {#each songs as song (song.id)}
+        <button
+            class="grid w-96 bg-opacity-20 backdrop-filter glass bg-primary backdrop-blur-lg rounded-md shadow-md p-4 hover:bg-opacity-30"
             on:click={() => handleSongClick(song)}
             on:keydown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -80,78 +112,118 @@
                 <div
                     class="flex flex-col items-center space-y-2 text-base-content text-sm"
                 >
-                    <div class="flex justify-center space-x-2">
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-circle"
-                            on:click={(event) => openModal(index, event)}
-                        >
-                            <Icon
-                                class="font-bold text-lg"
-                                icon="mdi:information-outline"
-                            />
-                        </button>
-                        <button
-                            class="btn btn-sm btn-circle flex items-center justify-center"
-                            on:click={(event) =>
-                                handleDeleteSong(song?.id, event)}
-                        >
-                            <Icon
-                                class="  font-extrabold"
-                                icon="streamline:delete-1-solid"
-                            />
-                        </button>
-                    </div>
+                    <button
+                        class="btn btn-sm btn-circle"
+                        on:click|stopPropagation={() =>
+                            openModal(`modal-${song.id}`)}
+                    >
+                        <Icon
+                            class="font-bold text-lg"
+                            icon="mdi:dots-vertical"
+                        />
+                    </button>
                     <p class="font-light opacity-75">
                         {formatTime(song?.duration)}
                     </p>
-
-                    <dialog
-                        id={`songInfo${index}`}
-                        class="modal bg-base-100 rounded-lg text-base-content"
-                    >
-                        <div class="modal-box w-full max-w-xs">
-                            <h3 class="font-bold text-lg mb-4">
-                                {song?.title}
-                            </h3>
-                            <hr class="divide-y-2 py-1" />
-                            <div class="flex flex-col gap-2">
-                                {#each Object.entries(song) as [key, value]}
-                                    {#if ["id", "artist", "album", "year", "track"].includes(key)}
-                                        <div
-                                            class="flex justify-between items-center"
-                                        >
-                                            <p class="font-semibold">
-                                                {key.charAt(0).toUpperCase() +
-                                                    key.slice(1)}:
-                                            </p>
-                                            <p>{value}</p>
-                                        </div>
-                                    {/if}
-                                {/each}
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Duration:</p>
-                                    <p>{formatTime(song?.duration)}</p>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <p class="font-semibold">Size:</p>
-                                    <p>{formatBytes(song?.size)}</p>
-                                </div>
-                            </div>
-                            <div class="modal-action mt-4">
-                                <form method="dialog">
-                                    <button class="btn btn-primary"
-                                        >Close</button
-                                    >
-                                </form>
-                            </div>
-                        </div>
-                    </dialog>
                 </div>
             </div>
-        </li>
+        </button>
+
+        <dialog id={`modal-${song.id}`} class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg mb-4">{song.title}</h3>
+                <div class="flex flex-col gap-4">
+                    <button
+                        class="btn btn-outline w-full"
+                        on:click={(event) => handleInfoClick(event, song.id)}
+                    >
+                        <Icon icon="mdi:information-outline" class="mr-2" /> Info
+                    </button>
+                    {#if !isPlaylistView}
+                        <button
+                            class="btn btn-outline w-full"
+                            on:click={(event) =>
+                                handlePlaylistClick(event, song.id)}
+                        >
+                            <Icon icon="mdi:playlist-plus" class="mr-2" /> Add to
+                            Playlist
+                        </button>
+                    {:else}
+                        <button
+                            class="btn btn-outline btn-error w-full"
+                            on:click={(event) =>
+                                handleRemoveFromPlaylist(event, song.id)}
+                        >
+                            <Icon icon="mdi:playlist-remove" class="mr-2" /> Remove
+                            from Playlist
+                        </button>
+                    {/if}
+                    <button
+                        class="btn btn-outline btn-error w-full"
+                        on:click={(event) => handleDeleteClick(event, song.id)}
+                    >
+                        <Icon icon="mdi:delete" class="mr-2" /> Delete
+                    </button>
+                </div>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn">Close</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog id={`info-${song.id}`} class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg mb-4">{song.title}</h3>
+                <div class="flex flex-col gap-2">
+                    {#each Object.entries(song) as [key, value]}
+                        {#if ["id", "artist", "album", "year", "track"].includes(key)}
+                            <div class="flex justify-between items-center">
+                                <p class="font-semibold">
+                                    {key.charAt(0).toUpperCase() +
+                                        key.slice(1)}:
+                                </p>
+                                <p>{value}</p>
+                            </div>
+                        {/if}
+                    {/each}
+                    <div class="flex justify-between items-center">
+                        <p class="font-semibold">Duration:</p>
+                        <p>{formatTime(song?.duration)}</p>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <p class="font-semibold">Size:</p>
+                        <p>{formatBytes(song?.size)}</p>
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn">Close</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
+
+        <dialog id={`playlist-${song.id}`} class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg mb-4">Add to Playlist</h3>
+                <div class="flex flex-col gap-2">
+                    {#each $playlistStore as playlist}
+                        <button
+                            class="btn btn-outline w-full"
+                            on:click={() => addToPlaylist(playlist.id, song.id)}
+                        >
+                            {playlist.name}
+                        </button>
+                    {/each}
+                </div>
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn">Close</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
     {/each}
 </ul>
-
-<style>
-</style>

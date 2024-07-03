@@ -6,7 +6,7 @@
     let searchQuery = "";
 
     const handleSearch = debounce(() => {
-        musicStore.filterSongs(searchQuery);
+        musicStore.setSearchQuery(searchQuery);
     }, 500);
 </script>
 
