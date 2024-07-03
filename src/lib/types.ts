@@ -10,3 +10,9 @@ export interface Song {
     size: number;
     audioUrl: ArrayBuffer;
 }
+
+export interface PlayList {
+    id: string;
+    name: string;
+    songs: string[]; //arr of ids
+}

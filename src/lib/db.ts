@@ -1,15 +1,17 @@
 // src/lib/db.ts
 import Dexie from 'dexie';
-import type { Song } from '$lib/types';
+import type { PlayList, Song } from '$lib/types';
 import { browser } from '$app/environment';
 
 export class MyDatabase extends Dexie {
     songs!: Dexie.Table<Song, string>;
+    playlists!: Dexie.Table<PlayList, string>;
 
     constructor() {
         super('MyDatabase');
-        this.version(1).stores({
+        this.version(2).stores({
             songs: 'id, title, artist, album, year, track, duration, size, audioUrl',
+            playlists: 'id, name, *songs'
         });
     }
 

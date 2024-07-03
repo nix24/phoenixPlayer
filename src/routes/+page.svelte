@@ -9,6 +9,8 @@
     import { v4 as uuidv4 } from "uuid";
     import { db } from "$lib/db";
     import Icon from "@iconify/svelte";
+    import { playlistStore } from "$lib/store/PlaylistStore";
+    import Playlist from "$lib/components/Playlist.svelte";
     //dummy data using placeholder img from placeholder website
 
     let filteredSongs: Song[] = [];
@@ -20,6 +22,7 @@
 
     onMount(async () => {
         await musicStore.loadSongs();
+        await playlistStore.loadPlaylists();
     });
 
     async function handleFileUpload(event: Event) {
@@ -34,43 +37,48 @@
     }
 
     async function processFiles(files: File[]) {
-        const newSongs = files.map(async (file) => {
-            try {
-                const { common, format } = await mm.parseBlob(file);
-                const buffer = await file.arrayBuffer();
+        const newSongs = await Promise.all(
+            files.map(async (file) => {
+                try {
+                    const formData = new FormData();
+                    formData.append("file", file);
 
-                //check for exisitng files
-                console.log("common", common.title);
-                const exisitngFile = await db?.songs
-                    .where("title")
-                    .equals(String(common.title))
-                    .and((song) => song.artist === common.artist)
-                    .first();
+                    const response = await fetch("/api/extractMeta", {
+                        method: "POST",
+                        body: formData,
+                    });
 
-                if (exisitngFile) {
-                    console.log(
-                        `File ${file.name} already exists in the database`,
-                    );
+                    if (!response.ok) {
+                        throw new Error("Failed to extract metadata");
+                    }
+
+                    const metadata = await response.json();
+
+                    // Check for existing song
+                    const existingSong = await db?.songs
+                        .where("title")
+                        .equalsIgnoreCase(metadata.title)
+                        .and(
+                            (song) =>
+                                song.artist.toLowerCase() ===
+                                metadata.artist.toLowerCase(),
+                        )
+                        .first();
+
+                    if (existingSong) return null;
+
+                    return {
+                        id: uuidv4(),
+                        ...metadata,
+                        size: file.size,
+                        audioUrl: await file.arrayBuffer(),
+                    };
+                } catch (error) {
+                    console.error("Failed to process file", error);
                     return null;
                 }
-
-                return {
-                    id: uuidv4(),
-                    coverArt: common.picture?.[0]?.data?.toString("base64"),
-                    title: common.title || "",
-                    artist: common.artist || "",
-                    album: common.album || "",
-                    year: common.year || "",
-                    track: common.track?.no || "",
-                    duration: format.duration || 0,
-                    size: file.size || 0,
-                    audioUrl: buffer,
-                };
-            } catch (error) {
-                console.error(`Failed to parse file ${file.name}:`, error);
-                return null;
-            }
-        });
+            }),
+        );
 
         const validSongs = (await Promise.all(newSongs)).filter(
             (song): song is Song => song !== null,
@@ -90,19 +98,29 @@
 <!-- <pre>{JSON.stringify(filteredSongs, null, 2)}</pre> -->
 <main class="p-4">
     <h1 class="text-2xl font-bold mb-4">Songs</h1>
-    <div class="relative m-4" role="region" aria-live="polite">
-        <div class="max-w-xs mx-auto">
-            <SearchBar />
+
+    <div class="lg:flex lg:space-x-4">
+        <div class="relative m-4" role="region" aria-live="polite">
+            <div class="max-w-xs mx-auto">
+                <SearchBar />
+            </div>
+        </div>
+
+        <div class="divider" />
+
+        {#if filteredSongs.length > 0}
+            <SongList
+                songs={filteredSongs}
+                on:songSelected={handleSongSelected}
+            />
+        {:else}
+            <p>no files. try uploading from a directory!</p>
+        {/if}
+
+        <div class="lg:w-1/3 mt-4 lg:mt-0">
+            <Playlist playlists={$playlistStore} />
         </div>
     </div>
-
-    <div class="divider" />
-
-    {#if filteredSongs.length > 0}
-        <SongList songs={filteredSongs} on:songSelected={handleSongSelected} />
-    {:else}
-        <p>no files. try uploading from a directory!</p>
-    {/if}
 
     <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
         <div
