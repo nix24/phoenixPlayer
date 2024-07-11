@@ -1,6 +1,7 @@
 import { derived, writable, type Readable } from "svelte/store";
 import type { Song } from "$lib/types";
 import { db } from "$lib/db";
+import { search_songs } from "../../../wasm_utils/pkg/wasm_utils";
 
 
 function createMusicStore() {
@@ -19,10 +20,8 @@ function createMusicStore() {
     const filteredSongs: Readable<Song[]> = derived({ subscribe },
         ($store) => {
             const query = $store.searchQuery.toLowerCase().trim();
-            return $store.songs.filter(song =>
-                song.title.toLowerCase().includes(query) ||
-                song.artist.toLowerCase().includes(query)
-            )
+            if (query === "") return $store.songs;
+            return search_songs($store.songs, query) as Song[];
         }
     )
     return {

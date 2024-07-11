@@ -1,4 +1,3 @@
-import { db } from "$lib/db";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import * as mm from 'music-metadata';
 

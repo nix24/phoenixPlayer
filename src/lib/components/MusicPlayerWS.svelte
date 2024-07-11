@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { formatTime } from "$lib/util";
+    import { format_time } from "../../../wasm_utils/pkg";
     import Icon from "@iconify/svelte";
     import { onMount, onDestroy } from "svelte";
     import WaveSurfer from "wavesurfer.js";
@@ -183,8 +183,8 @@
 
             <!-- Time Display -->
             <div class="w-full flex justify-between text-sm mb-4 font-semibold">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+                <span>{format_time(currentTime)}</span>
+                <span>{format_time(duration)}</span>
             </div>
 
             <!-- Playback Controls -->
