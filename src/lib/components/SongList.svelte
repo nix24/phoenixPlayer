@@ -9,6 +9,7 @@
     import { page } from "$app/stores";
 
     export let songs: Song[];
+    // biome-ignore lint/style/useConst: <explanation>
     export let isPlaylistView = false;
 
     const dispatch = createEventDispatcher();
