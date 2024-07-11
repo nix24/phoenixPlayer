@@ -1,7 +1,6 @@
 <script lang="ts">
     //home page
     import type { Song } from "$lib/types";
-    import * as mm from "music-metadata-browser";
     import { onMount } from "svelte";
     import { musicStore } from "$lib/store/MusicStore";
     import SongList from "$lib/components/SongList.svelte";

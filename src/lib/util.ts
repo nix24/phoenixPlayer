@@ -1,6 +1,4 @@
-import { get } from "svelte/store";
 import { db } from "./db";
-import { musicStore } from "./store/MusicStore";
 
 export function formatBytes(bytes: number, decimals = 2) {
     if (bytes === 0) return "0 Bytes";
@@ -21,7 +19,7 @@ export function formatTime(time: number): string {
 }
 
 export async function fetchSongById(id: string) {
-    const song = await db.songs.get(id);
+    const song = await db?.songs.get(id);
     if (song) return song;
     return null;
 }
@@ -47,3 +45,4 @@ export function debounce<F extends (...args: any[]) => any>(func: F, waitFor: nu
         });
     };
 }
+
