@@ -1,8 +1,0 @@
-C:\Users\carri\Desktop\code\javascript\svelte Projects\phoenixPlayer\wasm_utils\target\debug\deps\libsymphonia_format_riff-ada7831d5dc9b2c4.rmeta: C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\lib.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\common.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\mod.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\chunks.rs
-
-C:\Users\carri\Desktop\code\javascript\svelte Projects\phoenixPlayer\wasm_utils\target\debug\deps\symphonia_format_riff-ada7831d5dc9b2c4.d: C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\lib.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\common.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\mod.rs C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\chunks.rs
-
-C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\lib.rs:
-C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\common.rs:
-C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\mod.rs:
-C:\Users\carri\.cargo\registry\src\index.crates.io-6f17d22bba15001f\symphonia-format-riff-0.5.4\src\wave\chunks.rs:
