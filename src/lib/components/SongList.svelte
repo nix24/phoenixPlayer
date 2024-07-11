@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Song } from "$lib/types";
-    import { formatBytes, formatTime } from "$lib/util";
+    import { format_bytes, format_time } from "../../../wasm_utils/pkg";
     import placeholder from "$lib/images/placeholder.png";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
@@ -124,7 +124,7 @@
                         />
                     </button>
                     <p class="font-light opacity-75">
-                        {formatTime(song?.duration)}
+                        {format_time(song?.duration)}
                     </p>
                 </div>
             </div>
@@ -191,11 +191,11 @@
                     {/each}
                     <div class="flex justify-between items-center">
                         <p class="font-semibold">Duration:</p>
-                        <p>{formatTime(song?.duration)}</p>
+                        <p>{format_time(song?.duration)}</p>
                     </div>
                     <div class="flex justify-between items-center">
                         <p class="font-semibold">Size:</p>
-                        <p>{formatBytes(song?.size)}</p>
+                        <p>{format_bytes(song?.size, 2)}</p>
                     </div>
                 </div>
                 <div class="modal-action">
