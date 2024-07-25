@@ -39,7 +39,9 @@
                     </label>
                 </div>
                 <a href="/" data-sveltekit-preload-data class="flex-1 px-2 mx-2"
-                    >Phoenix Player</a
+                    >Phoenix Player <span
+                        class="font-mono text-sm px-2 text-warning">Alpha</span
+                    ></a
                 >
                 <div class="flex-none hidden lg:block">
                     <ul class="menu menu-horizontal">

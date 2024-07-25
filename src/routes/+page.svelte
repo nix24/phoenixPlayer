@@ -96,6 +96,13 @@
 
 <!-- <pre>{JSON.stringify(filteredSongs, null, 2)}</pre> -->
 <main class="p-4">
+    <p class="text-center">
+        Disclaimer: This app is still in early stages of development. Feel free
+        to check out the code on <a
+            class="text-info font-semibold hover:text-primary transition"
+            href="https://github.com/nix24/phoenixPlayer">github!</a
+        >
+    </p>
     <h1 class="text-2xl font-bold mb-4">Songs</h1>
 
     <div class="lg:flex lg:space-x-4">

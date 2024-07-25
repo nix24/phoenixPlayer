@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { add } from "../../../wasm_utils/pkg";
+    import { add } from "$lib/wasmPkg";
 
     let addResult = 0;
     function testAdd() {
@@ -7,7 +7,8 @@
     }
 </script>
 
-<div>
-    <button on:click={testAdd}>Test format_time</button>
-    <p>Result: {addResult}</p>
+<div class="p-5 flex flex-col space-y-4 max-w-md mx-auto">
+    <p class="text-3xl font-bold">tests assembly add function</p>
+    <button class="btn btn-primary" on:click={testAdd}>Test wasm</button>
+    <p class="text-2xl font-semibold">Result: {addResult}</p>
 </div>
