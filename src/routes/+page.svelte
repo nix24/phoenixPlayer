@@ -12,12 +12,32 @@
     import Playlist from "$lib/components/Playlist.svelte";
     //dummy data using placeholder img from placeholder website
 
+    let isVisible = false;
+    let isMobile = false;
+
+    function toggleVisibility() {
+        isVisible = !isVisible;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+        const target = event.target as Element;
+        if (isVisible && !target.closest(".upload-buttons")) {
+            isVisible = false;
+        }
+    }
+
+    onMount(() => {
+        isMobile = window.innerWidth <= 768; // Adjust this breakpoint as needed
+        window.addEventListener("resize", () => {
+            isMobile = window.innerWidth <= 768;
+        });
+    });
+    // -----------------------------------
     let filteredSongs: Song[] = [];
 
     musicStore.filteredSongs.subscribe((value) => {
         filteredSongs = value;
     });
-    console.log("filteredSongs", filteredSongs);
 
     onMount(async () => {
         await musicStore.loadSongs();
@@ -36,27 +56,49 @@
     }
 
     async function processFiles(files: File[]) {
+        const chunkSize = 3 * 1024 * 1024; // 3MB chunks
+
+        const uploadChunk = async (file: File, start: number) => {
+            const chunk = file.slice(start, start + chunkSize);
+            const formData = new FormData();
+            formData.append("file", chunk);
+            formData.append("fileName", file.name);
+            formData.append(
+                "chunkIndex",
+                Math.floor(start / chunkSize).toString(),
+            );
+            formData.append(
+                "totalChunks",
+                Math.ceil(file.size / chunkSize).toString(),
+            );
+
+            const response = await fetch("/api/extractMeta", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to upload chunk");
+            }
+
+            const result = await response.json();
+
+            if (start + chunkSize < file.size) {
+                return uploadChunk(file, start + chunkSize);
+            }
+
+            return result;
+        };
+
         const newSongs = await Promise.all(
             files.map(async (file) => {
                 try {
-                    const formData = new FormData();
-                    formData.append("file", file);
-
-                    const response = await fetch("/api/extractMeta", {
-                        method: "POST",
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        throw new Error("Failed to extract metadata");
-                    }
-
-                    const metadata = await response.json();
+                    const metadata = await uploadChunk(file, 0);
 
                     // Check for existing song
                     const existingSong = await db?.songs
                         .where("title")
-                        .equalsIgnoreCase(metadata.title)
+                        .equals(metadata.title || "")
                         .and(
                             (song) =>
                                 song.artist.toLowerCase() ===
@@ -95,6 +137,8 @@
 </script>
 
 <!-- <pre>{JSON.stringify(filteredSongs, null, 2)}</pre> -->
+<svelte:window on:click={handleClickOutside} />
+
 <main class="p-4">
     <p class="text-center">
         Disclaimer: This app is still in early stages of development. Feel free
@@ -130,33 +174,55 @@
         {/if}
     </div>
 
-    <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
-        <div
-            class="relative inline-flex items-center btn btn-primary tooltip tooltip-left"
-            data-tip="Upload from Directory"
-        >
-            <Icon icon="mdi:folder-upload" class="text-2xl cursor-pointer" />
-            <input
-                type="file"
-                accept="audio/*"
-                {...{ webkitdirectory: true }}
-                {...{ mozdirectory: true }}
-                on:change={handleFileUpload}
-                multiple
-                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
-            />
-        </div>
-        <div
-            class="relative inline-flex items-center btn btn-secondary tooltip tooltip-left"
-            data-tip="Upload individual Files"
-        >
-            <Icon icon="mdi:file-upload" class="text-2xl cursor-pointer" />
-            <input
-                type="file"
-                accept="audio/*"
-                on:change={handleFileUpload}
-                class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
-            />
-        </div>
+    <div class="fixed bottom-4 right-4 flex flex-col space-y-2 upload-buttons">
+        {#if !isMobile || isVisible}
+            <div
+                class="relative inline-flex items-center btn btn-primary tooltip tooltip-left transform transition-transform duration-300 ease-in-out {isVisible
+                    ? 'translate-y-0'
+                    : 'translate-y-16'}"
+                data-tip="Upload from Directory"
+                class:hidden={isMobile && !isVisible}
+            >
+                <Icon
+                    icon="mdi:folder-upload"
+                    class="text-2xl cursor-pointer"
+                />
+                <input
+                    type="file"
+                    accept="audio/*"
+                    {...{ webkitdirectory: true }}
+                    {...{ mozdirectory: true }}
+                    on:change={handleFileUpload}
+                    multiple
+                    class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+                />
+            </div>
+            <div
+                class="relative inline-flex items-center btn btn-secondary tooltip tooltip-left transform transition-transform duration-300 ease-in-out {isVisible
+                    ? 'translate-y-0'
+                    : 'translate-y-16'}"
+                data-tip="Upload individual Files"
+                class:hidden={isMobile && !isVisible}
+            >
+                <Icon icon="mdi:file-upload" class="text-2xl cursor-pointer" />
+                <input
+                    type="file"
+                    accept="audio/*"
+                    on:change={handleFileUpload}
+                    class="file-input file-input-bordered absolute left-0 top-0 w-full h-full opacity-0 cursor-pointer"
+                />
+            </div>
+        {/if}
+        {#if isMobile}
+            <button class="btn btn-circle btn-md" on:click={toggleVisibility}>
+                <Icon icon="mdi:arrow-up" class="text-2xl font-bold" />
+            </button>
+        {/if}
     </div>
 </main>
+
+<style>
+    .upload-buttons {
+        z-index: 50;
+    }
+</style>
