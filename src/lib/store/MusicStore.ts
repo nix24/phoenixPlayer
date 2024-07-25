@@ -1,7 +1,7 @@
 import { derived, writable, type Readable } from "svelte/store";
 import type { Song } from "$lib/types";
 import { db } from "$lib/db";
-import { search_songs } from "$lib/pkg";
+import { search_songs } from "$lib/wasmPkg";
 
 
 function createMusicStore() {

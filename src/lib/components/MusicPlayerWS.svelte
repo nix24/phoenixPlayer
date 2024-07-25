@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { format_time } from "$lib/pkg";
+    import { format_time } from "$lib/wasmPkg";
     import Icon from "@iconify/svelte";
     import { onMount, onDestroy } from "svelte";
     import WaveSurfer from "wavesurfer.js";

@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Song } from "$lib/types";
-    import { format_bytes, format_time } from "$lib/pkg";
+    import { format_bytes, format_time } from "$lib/wasmPkg";
     import placeholder from "$lib/images/placeholder.png";
     import Icon from "@iconify/svelte";
     import { createEventDispatcher } from "svelte";
