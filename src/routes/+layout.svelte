@@ -9,7 +9,7 @@
 
     onMount(async () => {
         if (browser) {
-            const wasm = await import("$lib/pkg");
+            const wasm = await import("$lib/wasmPkg");
             await wasm.default();
             isWasmLoaded = true;
         }
