@@ -2,6 +2,7 @@
     import { fade } from "svelte/transition";
     import { setupViewTransition } from "sveltekit-view-transition";
 
+    // biome-ignore lint/style/useConst: <explanation>
     let drawerOpen = false;
 
     const { transition } = setupViewTransition();
@@ -47,7 +48,7 @@
                     <ul class="menu menu-horizontal">
                         <!-- Navbar menu content here -->
                         <li>
-                            <a href="/artists">Artists</a>
+                            <a href="/settings">Settings</a>
                         </li>
                         <li><a href="/albums">Albums</a></li>
                         <li><a href="/playlists">Playlists</a></li>
@@ -69,7 +70,7 @@
             >
                 <!-- Sidebar content here -->
                 <li>
-                    <a href="/artists">Artists</a>
+                    <a href="/settings">Settings</a>
                 </li>
                 <li><a href="/albums">Albums</a></li>
                 <li><a href="/playlists">Playlists</a></li>

@@ -44,7 +44,14 @@ pub struct Song {
     title: String,
     artist: String,
     album: String,
-    coverArt: Option<String>,
+    cover_art: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct VideoInfo {
+    title: String,
+    author: String,
+    length_seconds: u64,
 }
 
 #[wasm_bindgen]
