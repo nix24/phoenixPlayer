@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -47,13 +48,6 @@ pub struct Song {
     cover_art: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct VideoInfo {
-    title: String,
-    author: String,
-    length_seconds: u64,
-}
-
 #[wasm_bindgen]
 pub fn search_songs(songs: &JsValue, query: &str) -> Result<JsValue, JsValue> {
     let songs: Vec<Song> = serde_wasm_bindgen::from_value(songs.clone())?;
@@ -72,3 +66,10 @@ pub fn search_songs(songs: &JsValue, query: &str) -> Result<JsValue, JsValue> {
     let value = serde_wasm_bindgen::to_value(&filtered);
     Ok(value.unwrap())
 }
+
+#[wasm_bindgen]
+pub fn base64_to_array_buffer(base64: &str) -> Vec<u8> {
+    general_purpose::STANDARD.decode(base64).unwrap_or_default()
+}
+
+//converting to rust

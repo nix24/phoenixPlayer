@@ -1,8 +1,10 @@
 <script lang="ts">
-    import { db } from "$lib/db";
     import { musicStore } from "$lib/store/MusicStore";
     import type { Song } from "$lib/types";
-    import { format_time } from "$lib/wasmPkg/wasm_utils";
+    import {
+        base64_to_array_buffer,
+        format_time,
+    } from "$lib/wasmPkg/wasm_utils";
     import { v4 as uuidv4 } from "uuid";
     import { fade, scale } from "svelte/transition";
 
@@ -97,7 +99,7 @@
                 track: 1,
                 duration: results.duration,
                 size: Math.ceil(results.audioBuffer.length * (3 / 4)),
-                audioUrl: base64ToArrayBuffer(results.audioBuffer),
+                audioUrl: base64_to_array_buffer(results.audioBuffer),
             };
 
             await musicStore.addSongs([newSong]);
@@ -107,14 +109,6 @@
             alert("Failed to add song to library. Please try again.");
             addToLibraryDisabled = false;
         }
-    }
-    function base64ToArrayBuffer(base64: string): ArrayBuffer {
-        const binaryString = atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
     }
 </script>
 

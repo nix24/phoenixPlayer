@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { fade } from "svelte/transition";
     import { setupViewTransition } from "sveltekit-view-transition";
 
     // biome-ignore lint/style/useConst: <explanation>

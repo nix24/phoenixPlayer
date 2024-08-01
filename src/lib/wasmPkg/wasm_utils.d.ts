@@ -23,6 +23,11 @@ export function format_time(time: number): string;
 * @returns {any}
 */
 export function search_songs(songs: any, query: string): any;
+/**
+* @param {string} base64
+* @returns {Uint8Array}
+*/
+export function base64_to_array_buffer(base64: string): Uint8Array;
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -32,6 +37,7 @@ export interface InitOutput {
   readonly format_bytes: (a: number, b: number, c: number) => void;
   readonly format_time: (a: number, b: number) => void;
   readonly search_songs: (a: number, b: number, c: number, d: number) => void;
+  readonly base64_to_array_buffer: (a: number, b: number, c: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
