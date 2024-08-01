@@ -71,5 +71,3 @@ pub fn search_songs(songs: &JsValue, query: &str) -> Result<JsValue, JsValue> {
 pub fn base64_to_array_buffer(base64: &str) -> Vec<u8> {
     general_purpose::STANDARD.decode(base64).unwrap_or_default()
 }
-
-//converting to rust
