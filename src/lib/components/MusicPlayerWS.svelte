@@ -7,6 +7,7 @@
     import SlideText from "./SlideText.svelte";
     import placeholder from "$lib/images/placeholder.png";
     import AudioMotionAnalyzer from "audiomotion-analyzer";
+    import { goto } from "$app/navigation";
 
     export let audioSrc: string;
     export let imageSrc: string;
@@ -119,6 +120,21 @@
             mediaElementSource = null;
         }
     });
+
+    function handleNextSong() {
+        const { song, index } = musicStore.getNextSong();
+        if (song) {
+            musicStore.setCurrentSong(song, index);
+            goto(`/songs/${song.id}`);
+        }
+    }
+    function handlePreviousTrack() {
+        const { song, index } = musicStore.getPreviousSong();
+        if (song) {
+            musicStore.setCurrentSong(song, index);
+            goto(`/songs/${song.id}`);
+        }
+    }
 </script>
 
 <div class="w-full sticky bottom-0 left-0 right-0 bg-base-300 p-6 z-30">
@@ -189,7 +205,7 @@
 
             <!-- Playback Controls -->
             <div class="flex items-center justify-center gap-8 mb-6">
-                <button class="">
+                <button class="" on:click={handlePreviousTrack}>
                     <Icon icon="mdi:skip-previous" width="36" height="36" />
                 </button>
                 <button
@@ -202,7 +218,7 @@
                         height="35"
                     />
                 </button>
-                <button class="">
+                <button class="" on:click={handleNextSong}>
                     <Icon icon="mdi:skip-next" width="36" height="36" />
                 </button>
             </div>
