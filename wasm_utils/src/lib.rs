@@ -23,19 +23,19 @@ pub fn format_bytes(bytes: f64, decimals: usize) -> String {
     }
 
     let k: f64 = 1024.0;
-    let dm = if decimals < 1 { 0 } else { decimals };
-    let sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    let dm: usize = if decimals < 1 { 0 } else { decimals };
+    let sizes: [&str; 9] = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
-    let i = (bytes.ln() / k.ln()).floor() as usize;
-    let formatted_value = (bytes / k.powi(i as i32)).round_to_decimals(dm);
+    let i: usize = (bytes.ln() / k.ln()).floor() as usize;
+    let formatted_value: f64 = (bytes / k.powi(i as i32)).round_to_decimals(dm);
 
     format!("{} {}", formatted_value, sizes[i])
 }
 
 #[wasm_bindgen]
 pub fn format_time(time: f64) -> String {
-    let minutes = (time / 60.0).floor() as i32;
-    let seconds = (time % 60.0).floor() as i32;
+    let minutes: i32 = (time / 60.0).floor() as i32;
+    let seconds: i32 = (time % 60.0).floor() as i32;
     format!("{}:{:02}", minutes, seconds)
 }
 
@@ -49,14 +49,14 @@ pub struct Song {
 }
 
 #[wasm_bindgen]
-pub fn search_songs(songs: &JsValue, query: &str) -> Result<JsValue, JsValue> {
+pub fn search_songs(songs: &JsValue, query: &str) -> std::result::Result<JsValue, JsValue> {
     let songs: Vec<Song> = serde_wasm_bindgen::from_value(songs.clone())?;
 
-    let query_lowercase = query.to_lowercase();
+    let query_lowercase: String = query.to_lowercase();
 
     let filtered: Vec<&Song> = songs
         .iter()
-        .filter(|song| {
+        .filter(|song: &&Song| {
             song.title.to_lowercase().contains(&query_lowercase)
                 || song.artist.to_lowercase().contains(&query_lowercase)
                 || song.album.to_lowercase().contains(&query_lowercase)

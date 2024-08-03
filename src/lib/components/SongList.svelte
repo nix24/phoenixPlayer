@@ -7,7 +7,7 @@
     import { musicStore } from "$lib/store/MusicStore";
     import { playlistStore } from "$lib/store/PlaylistStore";
     import { page } from "$app/stores";
-
+    import audioBufferToWav from "audiobuffer-to-wav";
     export let songs: Song[];
     // biome-ignore lint/style/useConst: <explanation>
     export let isPlaylistView = false;
@@ -63,6 +63,39 @@
         event.stopPropagation();
         if (confirm("Are you sure you want to delete this song?")) {
             handleDeleteSong(songId);
+        }
+    }
+
+    //handling exporting songs: mp3 | wav
+    async function handleExport(song: Song, format: "mp3" | "wav") {
+        try {
+            let blob: Blob;
+            if (format === "mp3") {
+                // Assuming the song.audioUrl is already an ArrayBuffer
+                blob = new Blob([song.audioUrl], { type: "audio/mp3" });
+            } else {
+                // Convert to WAV
+                const audioCtx = new AudioContext();
+
+                const arrBuffer = song.audioUrl;
+                const audioBuffer = await audioCtx.decodeAudioData(arrBuffer);
+
+                // conversion to wav
+                const wavArrBuffer = audioBufferToWav(audioBuffer);
+                blob = new Blob([wavArrBuffer], { type: "audio/wav" });
+            }
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${song.title}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Export failed:", error);
+            alert("Failed to export the song. Please try again.");
         }
     }
 </script>
@@ -159,6 +192,20 @@
                             from Playlist
                         </button>
                     {/if}
+                    <button
+                        class="btn btn-outline w-full"
+                        on:click|stopPropagation={() =>
+                            handleExport(song, "mp3")}
+                    >
+                        <Icon icon="mdi:download" class="mr-2" /> Export MP3
+                    </button>
+                    <button
+                        class="btn btn-outline w-full"
+                        on:click|stopPropagation={() =>
+                            handleExport(song, "wav")}
+                    >
+                        <Icon icon="mdi:download" class="mr-2" /> Export WAV
+                    </button>
                     <button
                         class="btn btn-outline btn-error w-full"
                         on:click={(event) => handleDeleteClick(event, song.id)}
