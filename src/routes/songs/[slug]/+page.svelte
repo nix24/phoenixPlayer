@@ -24,10 +24,10 @@
         }
 
         if (data.props?.song) {
-            musicStore.update((store) => ({
-                ...store,
-                currentSong: data.props.song as Song,
-            }));
+            const currentIndex = $musicStore.songs.findIndex(
+                (s) => s.id === data.props.song.id,
+            );
+            musicStore.setCurrentSong(data.props.song, currentIndex);
         }
     });
 

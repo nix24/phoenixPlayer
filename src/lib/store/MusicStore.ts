@@ -1,4 +1,4 @@
-import { derived, writable, type Readable } from "svelte/store";
+import { derived, get, writable, type Readable } from "svelte/store";
 import type { Song } from "$lib/types";
 import { db } from "$lib/db";
 import { search_songs } from "$lib/wasmPkg";
@@ -8,11 +8,13 @@ function createMusicStore() {
     const { subscribe, set, update } = writable<{
         songs: Song[];
         currentSong: Song | null;
+        currentIndex: number;
         isPlaying: boolean;
         searchQuery: string;
     }>({
         songs: [],
         currentSong: null,
+        currentIndex: -1,
         isPlaying: false,
         searchQuery: ""
     });
@@ -24,6 +26,19 @@ function createMusicStore() {
             return search_songs($store.songs, query) as Song[];
         }
     )
+    //helper function for gettingSongIdx using offset
+    function getAdjacentSong(offset: number): { song: Song | null; index: number } {
+        const store = get({ subscribe });
+        if (store.songs.length === 0) {
+            return { song: null, index: -1 };
+        }
+        const newIndex = (store.currentIndex + offset + store.songs.length) % store.songs.length;
+        return {
+            song: store.songs[newIndex],
+            index: newIndex
+        };
+    }
+
     return {
         subscribe,
         set,
@@ -53,10 +68,24 @@ function createMusicStore() {
             set({
                 songs: dbSongs || [],
                 currentSong: null,
+                currentIndex: -1,
                 isPlaying: false,
                 searchQuery: ""
             })
-        }
+        },
+
+        setCurrentSong: (song: Song, index: number) => {
+            update(store => ({
+                ...store,
+                currentSong: song,
+                currentIndex: index,
+                isPlaying: true
+            }))
+        },
+
+        getNextSong: () => getAdjacentSong(1),
+
+        getPreviousSong: () => getAdjacentSong(-1),
     }
 }
 

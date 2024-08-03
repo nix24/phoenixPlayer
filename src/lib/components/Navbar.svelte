@@ -82,7 +82,10 @@
     use:transition={{
         name: "page",
         classes: ({ navigation }) => {
-            if (navigation.to?.url.pathname.includes("/songs/")) {
+            const fromSongPage =
+                navigation.from?.url.pathname.includes("/songs/");
+            const toSongPage = navigation.to?.url.pathname.includes("/songs/");
+            if (toSongPage && !fromSongPage) {
                 return ["slide-up"];
             } else if (navigation.from?.url.pathname.includes("/songs/")) {
                 return ["fade"];
