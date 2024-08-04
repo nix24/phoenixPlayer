@@ -8,9 +8,9 @@
     import { playlistStore } from "$lib/store/PlaylistStore";
     import { page } from "$app/stores";
     import audioBufferToWav from "audiobuffer-to-wav";
-    export let songs: Song[];
     // biome-ignore lint/style/useConst: <explanation>
     export let isPlaylistView = false;
+    $: songs = $musicStore ? musicStore.getFilteredSongs() : [];
 
     const dispatch = createEventDispatcher();
     const playlistId = $page.params.slug;
@@ -21,16 +21,13 @@
     // }
 
     const handleSongClick = (song: Song) => {
-        musicStore.update((store) => ({
-            ...store,
-            currentSong: song,
-            isPlaying: true,
-        }));
+        musicStore.setCurrentSong(song.id as string);
+        musicStore.setIsPlaying(true);
         dispatch("songSelected", song);
     };
 
     const handleDeleteSong = async (id: string) => {
-        await musicStore.deleteSong(id);
+        await musicStore.removeSong(id);
     };
 
     function addToPlaylist(playlistId: string, songId: string) {
@@ -40,7 +37,7 @@
         event.stopPropagation();
         if (playlistId) {
             playlistStore.removeSongFromPlaylist(playlistId, songId);
-            songs = songs.filter((song) => song.id !== songId);
+            // songs = songs.filter((song) => song.id !== songId);
         }
     }
 
@@ -169,7 +166,8 @@
                 <div class="flex flex-col gap-4">
                     <button
                         class="btn btn-outline w-full"
-                        on:click={(event) => handleInfoClick(event, song.id)}
+                        on:click={(event) =>
+                            handleInfoClick(event, song.id || "")}
                     >
                         <Icon icon="mdi:information-outline" class="mr-2" /> Info
                     </button>
@@ -177,7 +175,7 @@
                         <button
                             class="btn btn-outline w-full"
                             on:click={(event) =>
-                                handlePlaylistClick(event, song.id)}
+                                handlePlaylistClick(event, song.id || "")}
                         >
                             <Icon icon="mdi:playlist-plus" class="mr-2" /> Add to
                             Playlist
@@ -186,7 +184,7 @@
                         <button
                             class="btn btn-outline btn-error w-full"
                             on:click={(event) =>
-                                handleRemoveFromPlaylist(event, song.id)}
+                                handleRemoveFromPlaylist(event, song.id || "")}
                         >
                             <Icon icon="mdi:playlist-remove" class="mr-2" /> Remove
                             from Playlist
@@ -208,7 +206,8 @@
                     </button>
                     <button
                         class="btn btn-outline btn-error w-full"
-                        on:click={(event) => handleDeleteClick(event, song.id)}
+                        on:click={(event) =>
+                            handleDeleteClick(event, song.id || "")}
                     >
                         <Icon icon="mdi:delete" class="mr-2" /> Delete
                     </button>
@@ -260,7 +259,8 @@
                     {#each $playlistStore as playlist}
                         <button
                             class="btn btn-outline w-full"
-                            on:click={() => addToPlaylist(playlist.id, song.id)}
+                            on:click={() =>
+                                addToPlaylist(playlist.id, song.id || "")}
                         >
                             {playlist.name}
                         </button>

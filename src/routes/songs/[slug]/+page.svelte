@@ -1,12 +1,7 @@
-<script script lang="ts">
-    // /songs/[slug] page
+<script lang="ts">
     import { musicStore } from "$lib/store/MusicStore";
-    import type { Song } from "$lib/types.js";
     import { onMount } from "svelte";
     import type { PageData } from "./$types";
-    import { db } from "$lib/db";
-    import { goto } from "$app/navigation";
-    import Icon from "@iconify/svelte";
     import MusicPlayerWs from "$lib/components/MusicPlayerWS.svelte";
     import { createBlobUrl } from "$lib/util";
     import placeholder from "$lib/images/placeholder.png";
@@ -14,36 +9,28 @@
     export let data: PageData;
 
     onMount(async () => {
-        if (!$musicStore.songs.length) {
-            //if empty, fetch from db
-            const dbSongs = await db?.songs.toArray();
-            musicStore.update((store) => ({
-                ...store,
-                songs: dbSongs as Song[],
-            }));
+        if ($musicStore.songs.size === 0) {
+            await musicStore.initializeStore();
         }
 
         if (data.props?.song) {
-            const currentIndex = $musicStore.songs.findIndex(
-                (s) => s.id === data.props.song.id,
-            );
-            musicStore.setCurrentSong(data.props.song, currentIndex);
+            musicStore.setCurrentSong(data.props.song.id as string);
         }
     });
 
-    $: audioSrc = $musicStore.currentSong?.audioUrl
-        ? createBlobUrl($musicStore.currentSong.audioUrl)
+    $: currentSong = $musicStore.globalQueue?.currentSongId
+        ? $musicStore.songs.get($musicStore.globalQueue.currentSongId)
+        : null;
+
+    $: audioSrc = currentSong?.audioUrl
+        ? createBlobUrl(currentSong.audioUrl)
         : "";
 
-    $: imageSrc = $musicStore.currentSong?.coverArt
-        ? `data:image/jpg;base64,${$musicStore.currentSong?.coverArt}`
+    $: imageSrc = currentSong?.coverArt
+        ? `data:image/jpg;base64,${currentSong.coverArt}`
         : placeholder;
 </script>
 
-<!-- <pre>{JSON.stringify(data, null, 2)}</pre> -->
-
-<div class="">
-    <div class="flex flex-col items-center w-full">
-        <MusicPlayerWs {audioSrc} {imageSrc} />
-    </div>
+<div class="flex flex-col items-center w-full">
+    <MusicPlayerWs {audioSrc} {imageSrc} />
 </div>

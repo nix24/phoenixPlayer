@@ -1,17 +1,19 @@
 // src/lib/db.ts
 import Dexie from 'dexie';
-import type { PlayList, Song } from '$lib/types';
+import type { GlobalQueue, PlayList, Song } from '$lib/types';
 import { browser } from '$app/environment';
 
 export class MyDatabase extends Dexie {
     songs!: Dexie.Table<Song, string>;
     playlists!: Dexie.Table<PlayList, string>;
+    globalQueue!: Dexie.Table<GlobalQueue, number>;
 
     constructor() {
-        super('MyDatabase');
+        super('MusicDatabase');
         this.version(2).stores({
-            songs: 'id, title, artist, album, year, track, duration, size, audioUrl',
-            playlists: 'id, name, *songs'
+            songs: '++id, title, artist, album, year, track, duration, size, audioUrl, prevId, nextId',
+            playlists: '++id, name, *songs',
+            globalQueue: '++id, firstSongId, lastSongId, currentSongId, totalSongs'
         });
     }
 
