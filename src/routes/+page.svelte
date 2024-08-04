@@ -158,9 +158,9 @@
 
         <div class="divider" />
 
-        <div class="lg:w-1/3 mt-4 lg:mt-0">
+        <!-- <div class="lg:w-1/3 mt-4 lg:mt-0">
             <Playlist playlists={$playlistStore} />
-        </div>
+        </div> -->
 
         <div class="divider" />
 

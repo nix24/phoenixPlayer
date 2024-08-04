@@ -254,7 +254,9 @@
 
         <dialog id={`playlist-${song.id}`} class="modal">
             <div class="modal-box">
-                <h3 class="font-bold text-lg mb-4">Add to Playlist</h3>
+                <h3 class="font-bold text-lg mb-4 text-error">
+                    Add to Playlist (currently not functional)
+                </h3>
                 <div class="flex flex-col gap-2">
                     {#each $playlistStore as playlist}
                         <button
