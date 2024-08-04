@@ -7,6 +7,7 @@
     } from "$lib/wasmPkg/wasm_utils";
     import { v4 as uuidv4 } from "uuid";
     import { fade, scale } from "svelte/transition";
+    import { get } from "svelte/store";
 
     type YoutubeConvertData = {
         coverArt: string;
@@ -88,6 +89,8 @@
         addToLibraryDisabled = true;
 
         try {
+            const currentState = get(musicStore);
+            const lastSongId = currentState.globalQueue?.lastSongId;
             //slicing off the data:image/png;base64 since it will will be duplicated when added to database
             const newSong: Song = {
                 id: uuidv4(),
@@ -95,14 +98,16 @@
                 title: results.title,
                 artist: results.author,
                 album: results.album,
-                year: Number(results.year),
+                year: Number(results.year) || 0,
                 track: 1,
                 duration: results.duration,
                 size: Math.ceil(results.audioBuffer.length * (3 / 4)),
                 audioUrl: base64_to_array_buffer(results.audioBuffer),
+                prevId: lastSongId as string,
+                nextId: null,
             };
 
-            await musicStore.addSongs([newSong]);
+            await musicStore.addSong(newSong);
             alert("Song added to library successfully!");
         } catch (error) {
             console.error("Failed to add to library: ", error);
