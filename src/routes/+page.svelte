@@ -14,6 +14,7 @@
 
     let isVisible = false;
     let isMobile = false;
+    $: filteredSongs = $musicStore ? $musicStore.filteredSongs : [];
 
     function toggleVisibility() {
         isVisible = !isVisible;
@@ -26,23 +27,20 @@
         }
     }
 
-    onMount(() => {
-        isMobile = window.innerWidth <= 768; // Adjust this breakpoint as needed
+    $: {
+        if ($musicStore) {
+            filteredSongs = Array.from($musicStore.songs.values());
+        }
+    }
+
+    onMount(async () => {
+        await musicStore.initializeStore();
+        isMobile = window.innerWidth <= 768;
         window.addEventListener("resize", () => {
             isMobile = window.innerWidth <= 768;
         });
     });
     // -----------------------------------
-    let filteredSongs: Song[] = [];
-
-    musicStore.filteredSongs.subscribe((value) => {
-        filteredSongs = value;
-    });
-
-    onMount(async () => {
-        await musicStore.loadSongs();
-        await playlistStore.loadPlaylists();
-    });
 
     async function handleFileUpload(event: Event) {
         const target = event.target as HTMLInputElement;
@@ -51,7 +49,7 @@
             const audioFiles = Array.from(files).filter(
                 (file) => file.type === "audio/mpeg",
             );
-            processFiles(audioFiles);
+            await processFiles(audioFiles);
         }
     }
 
@@ -124,15 +122,17 @@
         const validSongs = (await Promise.all(newSongs)).filter(
             (song): song is Song => song !== null,
         );
-        if (validSongs.length > 0) await musicStore.addSongs(validSongs);
+        if (validSongs.length > 0) {
+            //loop through valid songs and call addSong on each
+            for (const song of validSongs) {
+                await musicStore.addSong(song);
+            }
+        }
     }
 
     const handleSongSelected = (event: CustomEvent<Song>) => {
-        musicStore.update((store) => ({
-            ...store,
-            currentSong: event.detail,
-            isPlaying: true,
-        }));
+        musicStore.setCurrentSong(event.detail.id as string);
+        musicStore.setIsPlaying(true);
     };
 </script>
 
@@ -165,12 +165,11 @@
         <div class="divider" />
 
         {#if filteredSongs.length > 0}
-            <SongList
-                songs={filteredSongs}
-                on:songSelected={handleSongSelected}
-            />
+            <SongList on:songSelected={handleSongSelected} />
         {:else}
-            <p>no files. try uploading from a directory!</p>
+            <p class="text-center text-info">
+                no files. try uploading from a directory!
+            </p>
         {/if}
     </div>
 

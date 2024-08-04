@@ -1,13 +1,14 @@
 <script lang="ts">
     import { format_time } from "$lib/wasmPkg";
     import Icon from "@iconify/svelte";
-    import { onMount, onDestroy } from "svelte";
+    import { onMount, onDestroy, afterUpdate } from "svelte";
     import WaveSurfer from "wavesurfer.js";
     import { musicStore } from "$lib/store/MusicStore";
     import SlideText from "./SlideText.svelte";
     import placeholder from "$lib/images/placeholder.png";
     import AudioMotionAnalyzer from "audiomotion-analyzer";
     import { goto } from "$app/navigation";
+    import { createBlobUrl } from "$lib/util";
 
     export let audioSrc: string;
     export let imageSrc: string;
@@ -28,111 +29,197 @@
     let waveformContainer: HTMLDivElement;
     let visualizerContainer: HTMLDivElement;
 
-    onMount(async () => {
-        audioCtx = new window.AudioContext();
-        audioElement = new Audio(audioSrc);
+    $: currentSong = $musicStore.globalQueue?.currentSongId
+        ? $musicStore.songs.get($musicStore.globalQueue.currentSongId)
+        : null;
 
-        wavesurfer = WaveSurfer.create({
-            container: waveformContainer,
-            waveColor: "violet",
-            progressColor: "purple",
-            barWidth: 5,
-            barRadius: 3,
-            height: 40,
-            backend: "MediaElement",
-            media: audioElement,
-        });
+    let initializationPromise: Promise<void> | null = null;
+    let abortController: AbortController | null = null;
 
-        wavesurfer.on("ready", () => {
-            isLoaded = true;
-            duration = wavesurfer.getDuration();
-            if (audioMotion) audioMotion.destroy();
-            setupAudioMotion();
-        });
-
-        wavesurfer.on("play", () => {
-            isPlaying = true;
-        });
-        wavesurfer.on("pause", () => {
-            isPlaying = false;
-        });
-        wavesurfer.on("timeupdate", (time) => {
-            currentTime = time;
-        });
+    async function initWaveSurfer() {
+        if (abortController) {
+            abortController.abort();
+        }
+        abortController = new AbortController();
 
         try {
-            await wavesurfer.load(audioSrc);
-        } catch (error) {
-            console.error("Error loading audio:", error);
-        }
-    });
+            if (wavesurfer) {
+                wavesurfer.destroy();
+            }
 
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (mediaElementSource) {
+                mediaElementSource.disconnect();
+                mediaElementSource = null;
+            }
+            audioElement = new Audio(audioSrc);
+
+            wavesurfer = WaveSurfer.create({
+                container: waveformContainer,
+                waveColor: "violet",
+                progressColor: "purple",
+                barWidth: 5,
+                barRadius: 3,
+                height: 40,
+                backend: "MediaElement",
+                media: audioElement,
+            });
+
+            wavesurfer.on("ready", () => {
+                isLoaded = true;
+                if (wavesurfer) {
+                    wavesurfer.setVolume(0.5);
+                    duration = wavesurfer.getDuration();
+                }
+                if (audioMotion) audioMotion.destroy();
+                setupAudioMotion();
+            });
+
+            wavesurfer.on("play", () => {
+                isPlaying = true;
+            });
+            wavesurfer.on("pause", () => {
+                isPlaying = false;
+            });
+            wavesurfer.on("timeupdate", (time) => {
+                currentTime = time;
+            });
+
+            await new Promise<void>((resolve, reject) => {
+                wavesurfer.load(audioSrc);
+                wavesurfer.on("ready", () => {
+                    resolve();
+                    setupAudioMotion();
+                });
+                wavesurfer.on("error", reject);
+                abortController?.signal.addEventListener("abort", () => {
+                    reject(new DOMException("Aborted", "AbortError"));
+                });
+            });
+            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        } catch (error: any) {
+            if (error.name !== "AbortError") {
+                console.error("Error initializing WaveSurfer:", error);
+            }
+        }
+    }
     function setupAudioMotion() {
-        if (!mediaElementSource) {
-            mediaElementSource =
-                audioCtx.createMediaElementSource(audioElement);
+        if (audioMotion) audioMotion.destroy();
+        if (!audioCtx || !audioElement) return;
+
+        try {
+            if (!mediaElementSource) {
+                mediaElementSource =
+                    audioCtx.createMediaElementSource(audioElement);
+            }
+            const gainNode = audioCtx.createGain();
+
+            mediaElementSource.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            audioMotion = new AudioMotionAnalyzer(visualizerContainer, {
+                audioCtx: audioCtx,
+                source: gainNode,
+                height: 200,
+                width: 1000,
+                useCanvas: true,
+                mode: 2, // You can adjust this mode as needed
+                smoothing: 0.5,
+                gradient: "rainbow",
+                showBgColor: true,
+                showScaleX: false,
+                showScaleY: true,
+                showPeaks: true,
+                ledBars: true,
+                connectSpeakers: false,
+                maxFPS: 60,
+                overlay: true,
+                bgAlpha: 0,
+            });
+        } catch (error) {
+            console.error("Error initializing AudioMotionAnalyzer:", error);
         }
-        const gainNode = audioCtx.createGain();
-
-        mediaElementSource.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        audioMotion = new AudioMotionAnalyzer(visualizerContainer, {
-            audioCtx: audioCtx,
-            source: gainNode,
-            height: 200,
-            width: 1000,
-            useCanvas: true,
-            mode: 2, // You can adjust this mode as needed
-            smoothing: 0.5,
-            gradient: "rainbow",
-            showBgColor: true,
-            showScaleX: false,
-            showScaleY: true,
-            showPeaks: true,
-            ledBars: true,
-            connectSpeakers: false,
-            maxFPS: 60,
-            overlay: true,
-            bgAlpha: 0,
-        });
-
-        wavesurfer.setVolume(0.5);
     }
 
+    onMount(() => {
+        initializationPromise = initWaveSurfer();
+    });
     function togglePlay() {
-        if (!isLoaded) return;
+        if (!isLoaded || !wavesurfer) return;
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume();
+        }
         wavesurfer.playPause();
     }
 
-    $: if (audioSrc && wavesurfer) {
-        // Reload the audio if the source changes
+    $: if (audioSrc) {
         isLoaded = false;
-        wavesurfer.load(audioSrc);
+        initializationPromise = initWaveSurfer();
     }
 
-    onDestroy(() => {
-        if (wavesurfer) wavesurfer.destroy();
-        if (audioMotion) audioMotion.destroy();
-        if (audioCtx) audioCtx.close();
+    // $: if (audioSrc && wavesurfer) {
+    //     console.log("Audio source changed, reloading WaveSurfer");
+    //     isLoaded = false;
+    //     wavesurfer.load(audioSrc);
+    // }
+
+    function cleanUp() {
+        if (abortController) {
+            abortController.abort();
+        }
+        if (wavesurfer) {
+            wavesurfer.unAll();
+            wavesurfer.destroy();
+        }
+        if (audioMotion) {
+            audioMotion.destroy();
+        }
+        if (audioCtx) {
+            audioCtx.close();
+        }
         if (mediaElementSource) {
             mediaElementSource.disconnect();
             mediaElementSource = null;
         }
-    });
-
-    function handleNextSong() {
-        const { song, index } = musicStore.getNextSong();
-        if (song) {
-            musicStore.setCurrentSong(song, index);
-            goto(`/songs/${song.id}`);
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.src = "";
+            audioElement.load();
+        }
+        if (mediaElementSource) {
+            mediaElementSource = null;
         }
     }
-    function handlePreviousTrack() {
-        const { song, index } = musicStore.getPreviousSong();
-        if (song) {
-            musicStore.setCurrentSong(song, index);
-            goto(`/songs/${song.id}`);
+
+    onDestroy(() => {
+        cleanUp();
+    });
+
+    async function handleNext() {
+        const nextSong = musicStore.getNextSong().song;
+        if (nextSong) {
+            console.log("Navigating to next song:", nextSong.id);
+            musicStore.setCurrentSong(nextSong.id as string);
+            await goto(`/songs/${nextSong.id}`, { replaceState: true });
+
+            // Force a re-render by updating a reactive variable
+            audioSrc = createBlobUrl(nextSong.audioUrl);
+        } else {
+            console.log("No next song available");
+        }
+    }
+
+    async function handlePrevious() {
+        const prevSong = musicStore.getPreviousSong().song;
+        if (prevSong) {
+            console.log("Navigating to previous song:", prevSong.id);
+            musicStore.setCurrentSong(prevSong.id as string);
+            await goto(`/songs/${prevSong.id}`, { replaceState: true });
+
+            // Force a re-render by updating a reactive variable
+            audioSrc = createBlobUrl(prevSong.audioUrl);
+        } else {
+            console.log("No previous song available");
         }
     }
 </script>
@@ -155,16 +242,10 @@
                 <div class="h-auto">
                     {#if imageSrc}
                         <img
-                            src={imageSrc}
-                            alt={$musicStore.currentSong?.title}
+                            src={imageSrc || placeholder}
+                            alt={currentSong?.title || "Cover Art"}
                             class="object-scale-down sm:w-[65%] md:w-[50%] h-full rounded-2xl m-auto"
-                            data-tip={$musicStore.currentSong?.title}
-                        />
-                    {:else}
-                        <img
-                            src={placeholder}
-                            alt="Cover Art"
-                            class="object-scale-down sm:w-[65%] md:w-[50%] h-full rounded-2xl m-auto"
+                            data-tip={currentSong?.title || "Cover Art"}
                         />
                     {/if}
                 </div>
@@ -177,15 +258,15 @@
             >
                 {#if titleContainerW >= 85}
                     <SlideText
-                        text={$musicStore.currentSong?.title || ""}
+                        text={currentSong?.title || "title"}
                         containerWidth={titleContainerW}
                     />
                 {:else}
-                    {$musicStore.currentSong?.title}
+                    {currentSong?.title || "title"}
                 {/if}
             </h3>
             <p class="mb-6 text-lg font-semibold">
-                {$musicStore.currentSong?.artist}
+                {currentSong?.artist || "Artist"}
             </p>
 
             <!-- AudioMotion Visualizer -->
@@ -205,7 +286,7 @@
 
             <!-- Playback Controls -->
             <div class="flex items-center justify-center gap-8 mb-6">
-                <button class="" on:click={handlePreviousTrack}>
+                <button class="btn btn-circle btn-lg" on:click={handlePrevious}>
                     <Icon icon="mdi:skip-previous" width="36" height="36" />
                 </button>
                 <button
@@ -218,7 +299,7 @@
                         height="35"
                     />
                 </button>
-                <button class="" on:click={handleNextSong}>
+                <button class="btn btn-circle btn-lg" on:click={handleNext}>
                     <Icon icon="mdi:skip-next" width="36" height="36" />
                 </button>
             </div>

@@ -1,5 +1,5 @@
 export interface Song {
-    id: string;
+    id?: string;
     coverArt: string;
     title: string;
     artist: string;
@@ -9,10 +9,20 @@ export interface Song {
     duration: number;
     size: number;
     audioUrl: ArrayBuffer;
+    prevId: string | null;
+    nextId: string | null;
 }
 
 export interface PlayList {
     id: string;
     name: string;
     songs: string[]; //arr of ids
+}
+
+export interface GlobalQueue {
+    id?: number;
+    firstSongId: string | null;
+    lastSongId: string | null;
+    currentSongId: string | null;
+    totalSongs: number;
 }
